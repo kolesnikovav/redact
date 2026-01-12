@@ -145,7 +145,9 @@ mod tests {
 
         let result = anonymizer.anonymize(text, entities, &config).unwrap();
 
-        assert_eq!(result.text, "Email: jo**********l.com");
+        // With mask_start_chars=2 and mask_end_chars=4:
+        // "john@example.com" (16 chars) → "jo" + 10 stars + ".com"
+        assert_eq!(result.text, "Email: jo**********.com");
     }
 
     #[test]

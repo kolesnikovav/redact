@@ -20,7 +20,7 @@
 //! let mut analyzer = AnalyzerEngine::new();
 //!
 //! let text = "Contact John Doe at john@example.com or 555-1234";
-//! let result = analyzer.analyze(text, "en").unwrap();
+//! let result = analyzer.analyze(text, None).unwrap();
 //!
 //! println!("Detected {} entities", result.detected_entities.len());
 //!
@@ -29,7 +29,7 @@
 //!     strategy: AnonymizationStrategy::Replace,
 //!     ..Default::default()
 //! };
-//! let anonymized = analyzer.anonymize(text, "en", &config).unwrap();
+//! let anonymized = analyzer.anonymize(text, None, &config).unwrap();
 //! println!("Anonymized: {}", anonymized.text);
 //! ```
 

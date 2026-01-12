@@ -107,7 +107,7 @@ mod tests {
         let text = "Email: john@example.com, Phone: 555-1234";
         let entities = vec![
             RecognizerResult::new(EntityType::EmailAddress, 7, 23, 0.9, "test"),
-            RecognizerResult::new(EntityType::PhoneNumber, 33, 41, 0.8, "test"),
+            RecognizerResult::new(EntityType::PhoneNumber, 32, 40, 0.8, "test"),  // Fixed positions
         ];
         let config = AnonymizerConfig::default();
 
