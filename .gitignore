@@ -59,3 +59,8 @@ AGENTS.md
 
 # Agent documentation and task tracking
 docs/agent/
+/target
+/Cargo.lock
+**/*.rs.bk
+*.pdb
+.DS_Store
