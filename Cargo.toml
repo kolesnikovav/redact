@@ -65,6 +65,9 @@ clap = { version = "4.4", features = ["derive", "env"] }
 # Testing
 criterion = "0.5"
 
+# HTTP client (for examples)
+reqwest = { version = "0.12", features = ["json"] }
+
 [profile.release]
 opt-level = 3
 lto = "thin"
@@ -76,3 +79,26 @@ opt-level = 0
 
 [profile.bench]
 inherits = "release"
+
+# Package for running examples
+[package]
+name = "redact-examples"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+redact-core = { path = "crates/redact-core" }
+redact-api = { path = "crates/redact-api" }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+
+[[example]]
+name = "basic_usage"
+path = "examples/basic_usage.rs"
+
+[[example]]
+name = "api_client"
+path = "examples/api_client.rs"

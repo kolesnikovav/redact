@@ -27,6 +27,12 @@ pub enum AnonymizationStrategy {
     Redact,
 }
 
+impl Default for AnonymizationStrategy {
+    fn default() -> Self {
+        Self::Replace
+    }
+}
+
 /// Configuration for anonymization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnonymizerConfig {
