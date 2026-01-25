@@ -10,19 +10,19 @@ A production-ready, Rust-based PII detection and anonymization engine designed a
 - **🚀 High Performance**: 10-100x faster than Python-based solutions
 - **🔒 Type Safe**: Compile-time guarantees prevent runtime errors
 - **🌐 Multi-Platform**: Server, WASM (browser), mobile (FFI)
-- **🎯 Production Ready**: Pattern-based detection ready now, NER-ready architecture
-- **📦 Lightweight**: Minimal dependencies, efficient memory usage
-- **🔧 Extensible**: Plugin architecture for custom recognizers
+- **🎯 Production Ready**: Full NER + pattern-based detection with 36+ entity types
+- **📦 Lightweight**: Minimal dependencies, efficient memory usage (~20-50MB with NER)
+- **🔧 Extensible**: Plugin architecture for custom recognizers and ONNX models
 
 ## 📊 Comparison with Presidio
 
 | Feature | Presidio (Python) | Redact (Rust) | Status |
 |---------|------------------|---------------|---------|
 | Pattern Detection | ✅ | ✅ | ✅ Ready |
-| NER Support | ✅ | ✅ | 🔄 Framework ready |
+| NER Support | ✅ | ✅ | ✅ **Fully operational** |
 | REST API | ✅ | ✅ | ✅ Ready |
 | Performance | Good | Excellent | ✅ |
-| Memory Usage | High (~300MB) | Low (~20MB) | ✅ |
+| Memory Usage | High (~300MB) | Low (~20-50MB) | ✅ |
 | Startup Time | ~2-5s | ~50ms | ✅ |
 | WASM Support | ❌ | ✅ | 🔄 Structure ready |
 | Mobile Native | ❌ | ✅ | 🔄 Planned |
@@ -276,18 +276,19 @@ AnonymizerConfig {
 // Result: "Email: <TOKEN_uuid>" + restoration tokens
 ```
 
-## ⚠️ Current Limitations & Roadmap
+## ⚠️ Current Status & Roadmap
 
-### ❌ Not Yet Implemented
+### ✅ Fully Operational
 
-**NER (Named Entity Recognition) - Infrastructure Complete, Model Integration Pending**
+**NER (Named Entity Recognition) with ONNX Runtime**
 - ✅ **Tokenization** - Full HuggingFace tokenizers integration with BPE/WordPiece support
-- ✅ **BIO Tag Parsing** - Complete entity span extraction logic implemented
+- ✅ **BIO Tag Parsing** - Complete entity span extraction logic for contextual entities
 - ✅ **Entity Mapping** - Configurable label-to-entity-type mappings
 - ✅ **Configuration** - JSON-based config for custom NER models
-- ⏳ **ONNX Inference** - Framework ready, final API integration in progress
+- ✅ **ONNX Inference** - Complete ONNX Runtime integration with thread-safe session management
+- ✅ **Optimization** - Graph optimization level 3, multi-threaded inference
 
-**Current Approach**: Pattern-based detection handles **36+ entity types** covering structured PII (emails, SSNs, credit cards, crypto addresses, etc.). NER will automatically activate when you provide an ONNX model file.
+**Dual Detection System**: Pattern-based detection (36+ entity types) for structured PII + NER for contextual entities (persons, organizations, locations). NER automatically activates when you provide an ONNX model file.
 
 **Adding Your Own NER Model**:
 ```bash
@@ -301,6 +302,8 @@ NerConfig {
     min_confidence: 0.7,
 }
 ```
+
+### 🔄 In Progress
 
 **Token Restoration with TTL**
 - Encrypt strategy generates tokens but doesn't yet support automatic expiration (TTL)
