@@ -166,7 +166,7 @@ redact anonymize "SSN: 123-45-6789"
 
 ## 🔍 Supported Entity Types
 
-### Pattern-Based (30+ types - Production Ready ✅)
+### Pattern-Based (36+ types - Production Ready ✅)
 
 **Contact Information:**
 - EMAIL_ADDRESS - Email addresses
@@ -184,6 +184,7 @@ redact anonymize "SSN: 123-45-6789"
 - US_SSN - Social Security Numbers
 - US_DRIVER_LICENSE - Driver's license numbers
 - US_PASSPORT - Passport numbers
+- US_ZIP_CODE - ZIP codes and ZIP+4 format
 
 **UK-Specific:**
 - UK_NHS - NHS numbers
@@ -195,6 +196,16 @@ redact anonymize "SSN: 123-45-6789"
 - UK_DRIVER_LICENSE - Driving licenses
 - UK_PASSPORT_NUMBER - Passport numbers
 - UK_COMPANY_NUMBER - Company registration numbers
+
+**Healthcare:**
+- MEDICAL_LICENSE - Medical professional licenses
+- MEDICAL_RECORD_NUMBER - Medical record identifiers
+
+**Generic Identifiers:**
+- PASSPORT_NUMBER - Generic passport numbers (non-country specific)
+- AGE - Age detection with context
+- ISBN - International Standard Book Numbers
+- PO_BOX - PO Box addresses
 
 **Cryptocurrency:**
 - BTC_ADDRESS - Bitcoin addresses
@@ -274,14 +285,6 @@ AnonymizerConfig {
 - Pattern-based detection works well for structured PII (emails, SSNs, credit cards), but contextual entity detection (person names, organizations without clear patterns) requires NER
 - **Timeline**: NER integration is prioritized for Q1 2026
 
-**Missing Entity Types** (compared to original Go implementation):
-- US_ZIP_CODE - ZIP codes and ZIP+4 format
-- PO_BOX - PO Box addresses
-- ISBN - International Standard Book Numbers
-- PASSPORT_NUMBER (generic, non-country specific)
-- MEDICAL_RECORD_NUMBER - Medical record identifiers
-- AGE - Age detection
-
 **Token Restoration with TTL**
 - Encrypt strategy generates tokens but doesn't yet support automatic expiration (TTL)
 - No token restoration API endpoint yet
@@ -301,7 +304,7 @@ AnonymizerConfig {
 
 ### ✅ Production Ready
 
-- Pattern-based PII detection (30+ entity types)
+- Pattern-based PII detection (36+ entity types including all Go parity entities)
 - All anonymization strategies (replace, mask, hash, encrypt)
 - REST API service
 - Policy-based filtering with confidence thresholds

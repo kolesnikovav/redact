@@ -217,6 +217,52 @@ impl PatternRecognizer {
             0.6,
         );
 
+        // US ZIP Code (5 digits or ZIP+4 format)
+        let _ = self.add_pattern(
+            EntityType::UsZipCode,
+            r"\b\d{5}(?:-\d{4})?\b",
+            0.6,  // Lower confidence as could be other 5-digit numbers
+        );
+
+        // PO Box
+        let _ = self.add_pattern_with_context(
+            EntityType::PoBox,
+            r"\b(?:P\.?\s?O\.?|POST\s+OFFICE)\s*BOX\s+\d+\b",
+            0.85,
+            vec!["address".to_string(), "mail".to_string(), "ship".to_string()],
+        );
+
+        // ISBN (10 or 13 digit formats)
+        let _ = self.add_pattern(
+            EntityType::Isbn,
+            r"\b(?:ISBN(?:-1[03])?:?\s*)?(?:\d{9}[\dX]|\d{13})\b",
+            0.8,
+        );
+
+        // Generic Passport Number (alphanumeric, 6-9 characters)
+        let _ = self.add_pattern_with_context(
+            EntityType::PassportNumber,
+            r"\b[A-Z]{1,2}\d{6,9}\b",
+            0.7,
+            vec!["passport".to_string(), "travel".to_string()],
+        );
+
+        // Medical Record Number (various formats with MRN context)
+        let _ = self.add_pattern_with_context(
+            EntityType::MedicalRecordNumber,
+            r"\b(?:MRN|Medical\s*Record|Patient\s*ID):?\s*[A-Z0-9]{6,12}\b",
+            0.85,
+            vec!["patient".to_string(), "medical".to_string(), "hospital".to_string()],
+        );
+
+        // Age (with context)
+        let _ = self.add_pattern_with_context(
+            EntityType::Age,
+            r"\b(?:age|aged|years old):?\s*(\d{1,3})\b",
+            0.8,
+            vec!["years".to_string(), "old".to_string(), "age".to_string()],
+        );
+
         // Date/Time (ISO format and common variants)
         let _ = self.add_pattern(
             EntityType::DateTime,

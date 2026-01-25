@@ -29,6 +29,7 @@ pub enum EntityType {
     UsSsn,
     UsDriverLicense,
     UsPassport,
+    UsZipCode,
 
     // UK-specific identifiers
     UkNhs,
@@ -43,6 +44,13 @@ pub enum EntityType {
 
     // Healthcare
     MedicalLicense,
+    MedicalRecordNumber,
+
+    // Generic identifiers
+    PassportNumber,  // Generic, non-country specific
+    Age,
+    Isbn,
+    PoBox,
 
     // Crypto
     CryptoWallet,
@@ -80,6 +88,7 @@ impl EntityType {
             EntityType::UsSsn => "US_SSN",
             EntityType::UsDriverLicense => "US_DRIVER_LICENSE",
             EntityType::UsPassport => "US_PASSPORT",
+            EntityType::UsZipCode => "US_ZIP_CODE",
             EntityType::UkNhs => "UK_NHS",
             EntityType::UkNino => "UK_NINO",
             EntityType::UkPostcode => "UK_POSTCODE",
@@ -90,6 +99,11 @@ impl EntityType {
             EntityType::UkSortCode => "UK_SORT_CODE",
             EntityType::UkCompanyNumber => "UK_COMPANY_NUMBER",
             EntityType::MedicalLicense => "MEDICAL_LICENSE",
+            EntityType::MedicalRecordNumber => "MEDICAL_RECORD_NUMBER",
+            EntityType::PassportNumber => "PASSPORT_NUMBER",
+            EntityType::Age => "AGE",
+            EntityType::Isbn => "ISBN",
+            EntityType::PoBox => "PO_BOX",
             EntityType::CryptoWallet => "CRYPTO_WALLET",
             EntityType::BtcAddress => "BTC_ADDRESS",
             EntityType::EthAddress => "ETH_ADDRESS",
