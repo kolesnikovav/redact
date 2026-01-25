@@ -14,6 +14,7 @@
 //!
 //! ```no_run
 //! use redact_ner::NerRecognizer;
+//! use redact_core::recognizers::Recognizer;
 //!
 //! // Load model
 //! let recognizer = NerRecognizer::from_file("model.onnx").unwrap();

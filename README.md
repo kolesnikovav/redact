@@ -265,6 +265,48 @@ AnonymizerConfig {
 // Result: "Email: <TOKEN_uuid>" + restoration tokens
 ```
 
+## ⚠️ Current Limitations & Roadmap
+
+### ❌ Not Yet Implemented
+
+**NER (Named Entity Recognition) - In Progress**
+- The NER framework and ONNX integration structure are in place, but the actual model inference is not yet functional
+- Pattern-based detection works well for structured PII (emails, SSNs, credit cards), but contextual entity detection (person names, organizations without clear patterns) requires NER
+- **Timeline**: NER integration is prioritized for Q1 2026
+
+**Missing Entity Types** (compared to original Go implementation):
+- US_ZIP_CODE - ZIP codes and ZIP+4 format
+- PO_BOX - PO Box addresses
+- ISBN - International Standard Book Numbers
+- PASSPORT_NUMBER (generic, non-country specific)
+- MEDICAL_RECORD_NUMBER - Medical record identifiers
+- AGE - Age detection
+
+**Token Restoration with TTL**
+- Encrypt strategy generates tokens but doesn't yet support automatic expiration (TTL)
+- No token restoration API endpoint yet
+
+**WASM Bindings**
+- WASM structure exists but not fully implemented
+- Browser deployment path not yet tested
+
+**Mobile FFI**
+- Swift/Kotlin bindings planned but not started
+
+### ⚙️ Known Issues
+
+- **Regex Limitations**: Rust's `regex` crate doesn't support lookahead/lookbehind, so some validation patterns are simplified (e.g., US SSN doesn't validate against reserved numbers like 000-xx-xxxx)
+- **Phone Number Detection**: May have false positives with other numeric patterns. Context awareness helps but isn't perfect
+- **Performance**: No comprehensive benchmarks yet (Criterion framework in place but tests not written)
+
+### ✅ Production Ready
+
+- Pattern-based PII detection (30+ entity types)
+- All anonymization strategies (replace, mask, hash, encrypt)
+- REST API service
+- Policy-based filtering with confidence thresholds
+- Overlap resolution for multiple detections
+
 ## 🏗️ Architecture
 
 ```

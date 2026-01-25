@@ -171,10 +171,8 @@ mod tests {
     #[test]
     fn test_label_mapping() {
         let config = NerConfig::default();
-        let recognizer = NerRecognizer {
-            session: Arc::new(unsafe { std::mem::zeroed() }), // Mock
-            config,
-        };
+        // Use from_config to properly construct the recognizer
+        let recognizer = NerRecognizer::from_config(config).unwrap();
 
         assert_eq!(
             recognizer.map_label_to_entity("B-PER"),

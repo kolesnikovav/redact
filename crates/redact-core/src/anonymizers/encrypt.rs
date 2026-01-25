@@ -1,11 +1,12 @@
 use super::{apply_anonymization, Anonymizer, AnonymizerConfig};
 use crate::types::{AnonymizedResult, RecognizerResult, Token};
 use aes_gcm::{
-    aead::{Aead, KeyInit, OsRng},
+    aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
 };
 use anyhow::{anyhow, Result};
 use pbkdf2::pbkdf2_hmac;
+use rand::Rng;
 use sha2::Sha256;
 use uuid::Uuid;
 
@@ -41,15 +42,16 @@ impl EncryptAnonymizer {
 
     /// Encrypt a value
     fn encrypt_value(&self, value: &str, password: &str) -> Result<(String, Vec<u8>)> {
-        // Generate random salt
-        let salt: [u8; 16] = rand::random();
+        // Generate cryptographically secure random salt using thread_rng
+        let mut rng = rand::thread_rng();
+        let salt: [u8; 16] = rng.gen();
 
         // Derive key
         let key_bytes = self.derive_key(password, &salt);
         let cipher = Aes256Gcm::new((&key_bytes).into());
 
-        // Generate random nonce
-        let nonce_bytes: [u8; 12] = rand::random();
+        // Generate cryptographically secure random nonce
+        let nonce_bytes: [u8; 12] = rng.gen();
         let nonce = Nonce::from_slice(&nonce_bytes);
 
         // Encrypt
@@ -188,30 +190,6 @@ fn base64_encode(bytes: &[u8]) -> String {
     }
 
     result
-}
-
-// Add rand placeholder (we'll add it to Cargo.toml later)
-mod rand {
-    pub fn random<T: RandomGenerate>() -> T {
-        T::generate()
-    }
-
-    pub trait RandomGenerate {
-        fn generate() -> Self;
-    }
-
-    impl RandomGenerate for [u8; 12] {
-        fn generate() -> Self {
-            // In real implementation, use proper RNG
-            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-        }
-    }
-
-    impl RandomGenerate for [u8; 16] {
-        fn generate() -> Self {
-            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-        }
-    }
 }
 
 #[cfg(test)]
