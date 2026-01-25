@@ -40,6 +40,8 @@ tower-http = { version = "0.5", features = ["trace", "cors"] }
 
 # ONNX Runtime
 ort = { version = "2.0.0-rc.11", features = ["load-dynamic", "half"] }
+ndarray = "0.15"
+tokenizers = "0.19"
 
 # WASM support
 wasm-bindgen = "0.2"
