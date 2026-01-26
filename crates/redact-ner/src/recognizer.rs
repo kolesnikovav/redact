@@ -122,8 +122,10 @@ impl std::fmt::Debug for NerRecognizer {
 impl NerRecognizer {
     /// Create a new NER recognizer from a model file
     pub fn from_file<P: AsRef<Path>>(model_path: P) -> Result<Self> {
-        let mut config = NerConfig::default();
-        config.model_path = model_path.as_ref().to_string_lossy().to_string();
+        let config = NerConfig {
+            model_path: model_path.as_ref().to_string_lossy().to_string(),
+            ..Default::default()
+        };
         Self::from_config(config)
     }
 

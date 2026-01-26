@@ -35,9 +35,5 @@ pub use recognizer::{NerRecognizer, NerConfig};
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn test_placeholder() {
-        // Placeholder test
-        assert!(true);
-    }
+    // All tests are in the submodules (recognizer and tokenizer_wrapper)
 }

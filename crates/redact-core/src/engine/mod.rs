@@ -1,7 +1,7 @@
 use crate::anonymizers::{AnonymizerConfig, AnonymizerRegistry};
 use crate::recognizers::{pattern::PatternRecognizer, RecognizerRegistry};
 use crate::types::{
-    AnalysisMetadata, AnalysisResult, AnonymizedResult, EntityType, RecognizerResult,
+    AnalysisMetadata, AnalysisResult, AnonymizedResult, EntityType,
 };
 use anyhow::Result;
 use std::sync::Arc;
@@ -232,7 +232,7 @@ mod tests {
     fn test_analyzer_engine_new() {
         let engine = AnalyzerEngine::new();
         assert_eq!(engine.default_language, "en");
-        assert!(engine.recognizer_registry.recognizers().len() > 0);
+        assert!(!engine.recognizer_registry.recognizers().is_empty());
     }
 
     #[test]

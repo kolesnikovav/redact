@@ -112,9 +112,9 @@ impl Policy {
         self.pattern_rules
             .iter()
             .filter(|rule| rule.enabled)
-            .filter_map(|rule| {
-                // Try to parse entity type from pattern_id
-                Some(EntityType::from(rule.pattern_id.clone()))
+            .map(|rule| {
+                // Parse entity type from pattern_id
+                EntityType::from(rule.pattern_id.clone())
             })
             .collect()
     }

@@ -28,7 +28,7 @@ impl RecognizerRegistry {
         for entity_type in recognizer.supported_entities() {
             self.entity_map
                 .entry(entity_type.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(index);
         }
 
@@ -121,7 +121,7 @@ impl RecognizerRegistry {
     }
 
     /// Resolve overlapping detections by keeping highest confidence
-    fn resolve_overlaps(&self, mut results: Vec<RecognizerResult>) -> Vec<RecognizerResult> {
+    fn resolve_overlaps(&self, results: Vec<RecognizerResult>) -> Vec<RecognizerResult> {
         if results.is_empty() {
             return results;
         }
@@ -139,9 +139,7 @@ impl RecognizerRegistry {
             skip_until = i + 1;
 
             // Check for overlaps with subsequent results
-            for j in (i + 1)..results.len() {
-                let next = &results[j];
-
+            for (offset, next) in results.iter().enumerate().skip(i + 1) {
                 // If next result doesn't overlap, we're done
                 if !current.overlaps_with(next) {
                     break;
@@ -153,18 +151,18 @@ impl RecognizerRegistry {
                     if next.score > keep.score {
                         keep = next.clone();
                     }
-                    skip_until = j + 1;
+                    skip_until = offset + 1;
                 } else if next.contains(current) {
                     // Next contains current, prefer the larger one with higher score
                     if next.score >= keep.score {
                         keep = next.clone();
                     }
-                    skip_until = j + 1;
+                    skip_until = offset + 1;
                 } else {
                     // Partial overlap - keep the one with higher score
                     if next.score > keep.score {
                         keep = next.clone();
-                        skip_until = j + 1;
+                        skip_until = offset + 1;
                     }
                 }
             }
@@ -283,6 +281,6 @@ mod tests {
 
         let stats = registry.stats();
         assert_eq!(stats.recognizer_count, 1);
-        assert!(stats.entity_coverage.len() > 0);
+        assert!(!stats.entity_coverage.is_empty());
     }
 }

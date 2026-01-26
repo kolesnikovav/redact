@@ -12,10 +12,11 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 /// Strategy for anonymization
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum AnonymizationStrategy {
     /// Simple text replacement
+    #[default]
     Replace,
     /// Partial masking (e.g., ***@***.com)
     Mask,
@@ -25,12 +26,6 @@ pub enum AnonymizationStrategy {
     Encrypt,
     /// Remove entirely
     Redact,
-}
-
-impl Default for AnonymizationStrategy {
-    fn default() -> Self {
-        Self::Replace
-    }
 }
 
 /// Configuration for anonymization

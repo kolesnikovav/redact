@@ -60,7 +60,7 @@ impl PatternRecognizer {
         };
         self.patterns
             .entry(entity_type)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(compiled);
         Ok(())
     }
@@ -81,7 +81,7 @@ impl PatternRecognizer {
         };
         self.patterns
             .entry(entity_type)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(compiled);
         Ok(())
     }

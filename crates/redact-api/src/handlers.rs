@@ -1,6 +1,6 @@
 use crate::models::{
-    AnalyzeRequest, AnalyzeResponse, AnonymizeRequest, AnonymizeResponse, EntityResult,
-    ErrorResponse, HealthResponse, TokenInfo,
+    AnalyzeRequest, AnalyzeResponse, AnonymizeRequest, AnonymizeResponse,
+    EntityResult, ErrorResponse, HealthResponse, TokenInfo,
 };
 use axum::{
     extract::State,
@@ -18,6 +18,7 @@ pub struct AppState {
 }
 
 /// Custom error type
+#[derive(Debug)]
 pub struct ApiError {
     status: StatusCode,
     message: String,
@@ -214,6 +215,7 @@ pub async fn anonymize(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::AnonymizationConfig;
 
     fn create_test_state() -> AppState {
         AppState {

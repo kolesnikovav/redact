@@ -2,7 +2,6 @@
 ///
 /// Wraps the HuggingFace tokenizers crate and provides helpers for
 /// converting between token offsets and character offsets
-
 use anyhow::{anyhow, Result};
 use std::path::Path;
 use tokenizers::Tokenizer;
@@ -43,10 +42,11 @@ impl TokenizerWrapper {
     /// Get the padding token ID
     pub fn get_padding_id(&self) -> Option<u32> {
         self.tokenizer.get_padding()
-            .and_then(|p| Some(p.pad_id))
+            .map(|p| p.pad_id)
     }
 
     /// Get the vocabulary size
+    #[allow(dead_code)]
     pub fn vocab_size(&self) -> usize {
         self.tokenizer.get_vocab_size(true)
     }
@@ -84,6 +84,7 @@ impl Encoding {
     }
 
     /// Get the number of real (non-padding) tokens
+    #[allow(dead_code)]
     pub fn real_length(&self) -> usize {
         self.attention_mask.iter().filter(|&&m| m == 1).count()
     }

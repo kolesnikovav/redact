@@ -22,7 +22,7 @@ mod tests {
     };
     use redact_core::AnalyzerEngine;
     use std::sync::Arc;
-    use tower::ServiceExt;
+    use tower::util::ServiceExt;
 
     #[tokio::test]
     async fn test_health_route() {

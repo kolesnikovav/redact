@@ -212,7 +212,7 @@ fn test_uk_specific_entities() {
     let anonymized = engine.anonymize(text, None, &config).unwrap();
 
     // Verify some redaction occurred
-    assert!(anonymized.entities.len() >= 1, "Expected at least 1 entity to be redacted");
+    assert!(!anonymized.entities.is_empty(), "Expected at least 1 entity to be redacted");
 }
 
 #[test]
@@ -424,7 +424,7 @@ fn test_end_to_end_analyze_and_anonymize() {
 
     // Analyze
     let analysis = engine.analyze(text, None).unwrap();
-    assert!(analysis.detected_entities.len() > 0);
+    assert!(!analysis.detected_entities.is_empty());
 
     // Apply policy
     let filtered = policy.apply(analysis.detected_entities);
@@ -445,7 +445,7 @@ fn test_end_to_end_analyze_and_anonymize() {
     let result = engine.analyze_and_anonymize(text, None, &config).unwrap();
 
     // Verify analysis results
-    assert!(result.detected_entities.len() > 0);
+    assert!(!result.detected_entities.is_empty());
     assert!(result.anonymized.is_some());
 
     // Verify anonymization
