@@ -29,7 +29,12 @@ rand = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+rayon = "1.10"
 
 [lib]
 name = "redact_core"
 path = "src/lib.rs"
+
+[[bench]]
+name = "analyzer_benchmarks"
+harness = false

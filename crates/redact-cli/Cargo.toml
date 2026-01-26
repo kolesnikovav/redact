@@ -21,3 +21,8 @@ tokio = { workspace = true }
 [[bin]]
 name = "redact"
 path = "src/main.rs"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.0"
+tempfile = "3.8"
