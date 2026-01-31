@@ -1,15 +1,14 @@
 name: Prepare Release
 
-# Trigger manually from GitHub UI: Actions → Prepare Release → Run workflow
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., 0.6.0, 1.0.0-beta.1)'
+        description: 'Version to release (e.g., 0.6.0)'
         required: true
         type: string
       dry_run:
-        description: 'Dry run (preview changes only)'
+        description: 'Dry run (preview only)'
         required: false
         type: boolean
         default: false
@@ -33,120 +32,60 @@ jobs:
           VERSION="${{ inputs.version }}"
           VERSION="${VERSION#v}"
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
-            echo "❌ Invalid version format: $VERSION"
-            echo "Version must be semantic (e.g., 0.6.0, 1.0.0-beta.1)"
+            echo "Invalid version format: $VERSION"
             exit 1
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "✅ Version format valid: $VERSION"
 
-      - name: Check version doesn't already exist
+      - name: Check tag doesn't exist
         run: |
           if git tag -l "v${{ env.VERSION }}" | grep -q .; then
-            echo "❌ Tag v${{ env.VERSION }} already exists"
+            echo "Tag v${{ env.VERSION }} already exists"
             exit 1
           fi
-          echo "✅ Tag v${{ env.VERSION }} does not exist"
 
       - name: Create release branch
         if: ${{ !inputs.dry_run }}
-        run: |
-          git checkout -b release/v${{ env.VERSION }}
-          echo "BRANCH=release/v${{ env.VERSION }}" >> $GITHUB_ENV
+        run: git checkout -b release/v${{ env.VERSION }}
 
-      - name: Update workspace version
+      - name: Update versions
         run: |
-          sed -i "s/^version = \"[^\"]*\"/version = \"${{ env.VERSION }}\"/" Cargo.toml
-          echo "Updated Cargo.toml workspace version"
-
-      - name: Update inter-crate dependency versions
-        run: |
-          for file in crates/redact-ner/Cargo.toml crates/redact-api/Cargo.toml crates/redact-cli/Cargo.toml; do
-            sed -i "s/\(redact-core = { path = \"[^\"]*\", version = \"\)[^\"]*/\1${{ env.VERSION }}/" "$file"
-            sed -i "s/\(redact-ner = { path = \"[^\"]*\", version = \"\)[^\"]*/\1${{ env.VERSION }}/" "$file"
-            echo "Updated $file"
+          VERSION=${{ env.VERSION }}
+          sed -i "s/^version = \"[^\"]*\"/version = \"$VERSION\"/" Cargo.toml
+          for f in crates/redact-ner/Cargo.toml crates/redact-api/Cargo.toml crates/redact-cli/Cargo.toml; do
+            sed -i "s/\(redact-core = { path = \"[^\"]*\", version = \"\)[^\"]*/\1$VERSION/" "$f"
+            sed -i "s/\(redact-ner = { path = \"[^\"]*\", version = \"\)[^\"]*/\1$VERSION/" "$f"
           done
-
-      - name: Update CHANGELOG.md
-        run: |
-          TODAY=$(date +"%Y-%m-%d")
-          VERSION="${{ env.VERSION }}"
-          if grep -q "## \[${VERSION}\]" CHANGELOG.md; then
-            echo "Version already in CHANGELOG.md, skipping"
-          else
-            # Insert new version after the header line
-            sed -i "/^## \[/i\\
-## [${VERSION}] - ${TODAY}\\
-\\
-### Added\\
-\\
-### Changed\\
-\\
-### Fixed\\
-" CHANGELOG.md
-            echo "Added ${VERSION} entry to CHANGELOG.md"
-          fi
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Verify workspace compiles
+      - name: Verify build
         run: cargo check --workspace
 
       - name: Show changes (dry run)
         if: inputs.dry_run
         run: |
-          echo "=== DRY RUN - Changes that would be made ==="
+          echo "=== DRY RUN ==="
           git diff
-          echo ""
-          echo "Would create PR: release/v${{ env.VERSION }} → main"
-          echo "After PR merge, manually create tag: v${{ env.VERSION }}"
+          echo "Would create PR: release/v${{ env.VERSION }} -> main"
 
-      - name: Commit changes
+      - name: Commit and push
         if: ${{ !inputs.dry_run }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "chore: release v${{ env.VERSION }}"
+          git push -u origin release/v${{ env.VERSION }}
 
-      - name: Push branch and create PR
+      - name: Create PR
         if: ${{ !inputs.dry_run }}
         run: |
-          git push -u origin ${{ env.BRANCH }}
           gh pr create \
             --title "chore: release v${{ env.VERSION }}" \
-            --body "## Release v${{ env.VERSION }}
-
-          This PR was automatically created by the Prepare Release workflow.
-
-          ### Changes
-          - Bump version to ${{ env.VERSION }}
-          - Update inter-crate dependency versions
-          - Add CHANGELOG entry
-
-          ### After Merging
-          Create and push the tag to trigger the release:
-          \`\`\`bash
-          git checkout main && git pull
-          git tag -a v${{ env.VERSION }} -m \"Release v${{ env.VERSION }}\"
-          git push origin v${{ env.VERSION }}
-          \`\`\`
-
-          Or use the GitHub UI: Releases → Draft new release → Create tag v${{ env.VERSION }}" \
+            --body "Automated release PR. After merging, create tag: git tag -a v${{ env.VERSION }} -m Release && git push origin v${{ env.VERSION }}" \
             --base main \
-            --head ${{ env.BRANCH }}
+            --head release/v${{ env.VERSION }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Summary
-        if: ${{ !inputs.dry_run }}
-        run: |
-          echo "✅ Created PR for release v${{ env.VERSION }}"
-          echo ""
-          echo "Next steps:"
-          echo "1. Review and merge the PR"
-          echo "2. Create tag: git tag -a v${{ env.VERSION }} -m 'Release v${{ env.VERSION }}'"
-          echo "3. Push tag: git push origin v${{ env.VERSION }}"
-          echo ""
-          echo "The Release workflow will automatically run when the tag is pushed."
