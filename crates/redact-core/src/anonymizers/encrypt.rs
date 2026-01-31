@@ -231,7 +231,9 @@ mod tests {
         assert!(!encrypted.is_empty());
         assert_ne!(encrypted, original);
 
-        let decrypted = anonymizer.decrypt_value(&encrypted_bytes, password).unwrap();
+        let decrypted = anonymizer
+            .decrypt_value(&encrypted_bytes, password)
+            .unwrap();
         assert_eq!(decrypted, original);
     }
 

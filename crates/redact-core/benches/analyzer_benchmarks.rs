@@ -3,7 +3,7 @@
 //! Run with: cargo bench --package redact-core
 //! Run specific benchmark: cargo bench --package redact-core --bench analyzer_benchmarks
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use redact_core::{
     anonymizers::{AnonymizationStrategy, AnonymizerConfig},
     AnalyzerEngine, EntityType,
@@ -15,9 +15,7 @@ fn bench_analyze_email(c: &mut Criterion) {
     let text = "Contact me at john.doe@example.com for more information.";
 
     c.bench_function("analyze_single_email", |b| {
-        b.iter(|| {
-            engine.analyze(black_box(text), None).unwrap()
-        })
+        b.iter(|| engine.analyze(black_box(text), None).unwrap())
     });
 }
 
@@ -28,9 +26,7 @@ fn bench_analyze_multiple(c: &mut Criterion) {
                 or (555) 123-4567. Credit card: 4532123456789010.";
 
     c.bench_function("analyze_multiple_entities", |b| {
-        b.iter(|| {
-            engine.analyze(black_box(text), None).unwrap()
-        })
+        b.iter(|| engine.analyze(black_box(text), None).unwrap())
     });
 }
 
@@ -41,11 +37,9 @@ fn bench_analyze_filtered(c: &mut Criterion) {
 
     c.bench_function("analyze_with_filter", |b| {
         b.iter(|| {
-            engine.analyze_with_entities(
-                black_box(text),
-                &[EntityType::EmailAddress],
-                None
-            ).unwrap()
+            engine
+                .analyze_with_entities(black_box(text), &[EntityType::EmailAddress], None)
+                .unwrap()
         })
     });
 }
@@ -63,9 +57,7 @@ fn bench_analyze_by_length(c: &mut Criterion) {
 
         group.throughput(Throughput::Bytes(text.len() as u64));
         group.bench_with_input(BenchmarkId::from_parameter(size), &text, |b, text| {
-            b.iter(|| {
-                engine.analyze(black_box(text), None).unwrap()
-            })
+            b.iter(|| engine.analyze(black_box(text), None).unwrap())
         });
     }
     group.finish();
@@ -81,7 +73,9 @@ fn bench_anonymize_strategies(c: &mut Criterion) {
         AnonymizationStrategy::Replace,
         AnonymizationStrategy::Mask,
         AnonymizationStrategy::Hash,
-    ].iter() {
+    ]
+    .iter()
+    {
         let config = AnonymizerConfig {
             strategy: *strategy,
             ..Default::default()
@@ -92,7 +86,9 @@ fn bench_anonymize_strategies(c: &mut Criterion) {
             &config,
             |b, config| {
                 b.iter(|| {
-                    engine.analyze_and_anonymize(black_box(text), None, black_box(config)).unwrap()
+                    engine
+                        .analyze_and_anonymize(black_box(text), None, black_box(config))
+                        .unwrap()
                 })
             },
         );
@@ -116,15 +112,9 @@ fn bench_pattern_types(c: &mut Criterion) {
     ];
 
     for (name, text) in test_cases {
-        group.bench_with_input(
-            BenchmarkId::from_parameter(name),
-            &text,
-            |b, text| {
-                b.iter(|| {
-                    engine.analyze(black_box(text), None).unwrap()
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(name), &text, |b, text| {
+            b.iter(|| engine.analyze(black_box(text), None).unwrap())
+        });
     }
     group.finish();
 }
@@ -142,9 +132,7 @@ fn bench_cold_warm(c: &mut Criterion) {
 
     let engine = AnalyzerEngine::new();
     c.bench_function("warm_analysis", |b| {
-        b.iter(|| {
-            engine.analyze(black_box(text), None).unwrap()
-        })
+        b.iter(|| engine.analyze(black_box(text), None).unwrap())
     });
 }
 
@@ -156,9 +144,7 @@ fn bench_overlap_resolution(c: &mut Criterion) {
                 Phone: (555) 123-4567 SSN: 123-45-6789 Card: 4532123456789010";
 
     c.bench_function("overlap_resolution", |b| {
-        b.iter(|| {
-            engine.analyze(black_box(text), None).unwrap()
-        })
+        b.iter(|| engine.analyze(black_box(text), None).unwrap())
     });
 }
 

@@ -4,8 +4,8 @@
 //! detected and redacted according to policy rules.
 
 use redact_core::{
-    AnalyzerEngine, AnonymizerConfig, AnonymizationStrategy, EntityType,
-    policy::{Policy, PolicyStatus, PatternRule, RedactionConfig, PolicyActions},
+    policy::{PatternRule, Policy, PolicyActions, PolicyStatus, RedactionConfig},
+    AnalyzerEngine, AnonymizationStrategy, AnonymizerConfig, EntityType,
 };
 
 /// Helper to create a test policy with specified pattern rules
@@ -67,11 +67,18 @@ fn test_contact_information_entities() {
     let filtered = policy.apply(analysis.detected_entities);
 
     // Verify at least some contact entities were detected
-    assert!(filtered.len() >= 2, "Expected at least 2 contact entities to be detected");
+    assert!(
+        filtered.len() >= 2,
+        "Expected at least 2 contact entities to be detected"
+    );
 
     // Verify email is always detected (most reliable pattern)
-    assert!(filtered.iter().any(|e| e.entity_type == EntityType::EmailAddress),
-        "Email should always be detected");
+    assert!(
+        filtered
+            .iter()
+            .any(|e| e.entity_type == EntityType::EmailAddress),
+        "Email should always be detected"
+    );
 
     // Anonymize with replace strategy
     let config = AnonymizerConfig {
@@ -81,17 +88,23 @@ fn test_contact_information_entities() {
     let anonymized = engine.anonymize(text, None, &config).unwrap();
 
     // Verify at least some redactions occurred
-    assert!(anonymized.entities.len() >= 2, "Expected at least 2 entities to be redacted");
+    assert!(
+        anonymized.entities.len() >= 2,
+        "Expected at least 2 entities to be redacted"
+    );
 
     // Verify email is redacted
     assert!(anonymized.text.contains("[EMAIL_ADDRESS]"));
     assert!(!anonymized.text.contains("support@example.com"));
 
     // Verify at least one other entity type was redacted
-    let has_other_redactions = anonymized.text.contains("[PHONE_NUMBER]") ||
-                               anonymized.text.contains("[URL]") ||
-                               anonymized.text.contains("[IP_ADDRESS]");
-    assert!(has_other_redactions, "Expected at least one other entity type to be redacted");
+    let has_other_redactions = anonymized.text.contains("[PHONE_NUMBER]")
+        || anonymized.text.contains("[URL]")
+        || anonymized.text.contains("[IP_ADDRESS]");
+    assert!(
+        has_other_redactions,
+        "Expected at least one other entity type to be redacted"
+    );
 }
 
 #[test]
@@ -112,7 +125,9 @@ fn test_financial_entities() {
     let filtered = policy.apply(analysis.detected_entities);
 
     // Verify entities
-    assert!(filtered.iter().any(|e| e.entity_type == EntityType::CreditCard));
+    assert!(filtered
+        .iter()
+        .any(|e| e.entity_type == EntityType::CreditCard));
     // Note: IBAN detection depends on pattern implementation
 
     // Anonymize with mask strategy
@@ -175,7 +190,7 @@ fn test_uk_specific_entities() {
 
     // Create policy for UK entities (lower confidence thresholds for patterns that need context)
     let policy = create_test_policy(vec![
-        create_pattern_rule("UK_NHS", 0.6),  // Lower threshold as it needs context
+        create_pattern_rule("UK_NHS", 0.6), // Lower threshold as it needs context
         create_pattern_rule("UK_NINO", 0.8),
         create_pattern_rule("UK_POSTCODE", 0.7),
         create_pattern_rule("UK_PHONE_NUMBER", 0.7),
@@ -192,17 +207,27 @@ fn test_uk_specific_entities() {
 
     // Check for UK entities - at least some should be detected
     // Note: Some patterns like UK NHS require context words which may not be present
-    let uk_entity_count = entity_types.iter().filter(|e| matches!(e,
-        EntityType::UkNhs |
-        EntityType::UkNino |
-        EntityType::UkPostcode |
-        EntityType::UkPhoneNumber |
-        EntityType::UkMobileNumber |
-        EntityType::UkSortCode
-    )).count();
+    let uk_entity_count = entity_types
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                EntityType::UkNhs
+                    | EntityType::UkNino
+                    | EntityType::UkPostcode
+                    | EntityType::UkPhoneNumber
+                    | EntityType::UkMobileNumber
+                    | EntityType::UkSortCode
+            )
+        })
+        .count();
 
     // Lenient check - at least one UK-specific entity should be detected
-    assert!(uk_entity_count >= 1, "Expected at least 1 UK entity to be detected, found {}", uk_entity_count);
+    assert!(
+        uk_entity_count >= 1,
+        "Expected at least 1 UK entity to be detected, found {}",
+        uk_entity_count
+    );
 
     // Anonymize
     let config = AnonymizerConfig {
@@ -212,7 +237,10 @@ fn test_uk_specific_entities() {
     let anonymized = engine.anonymize(text, None, &config).unwrap();
 
     // Verify some redaction occurred
-    assert!(!anonymized.entities.is_empty(), "Expected at least 1 entity to be redacted");
+    assert!(
+        !anonymized.entities.is_empty(),
+        "Expected at least 1 entity to be redacted"
+    );
 }
 
 #[test]
@@ -234,10 +262,13 @@ fn test_crypto_entities() {
     let filtered = policy.apply(analysis.detected_entities);
 
     // Verify at least one crypto address is detected
-    let has_crypto = filtered.iter().any(|e|
+    let has_crypto = filtered.iter().any(|e| {
         e.entity_type == EntityType::BtcAddress || e.entity_type == EntityType::EthAddress
+    });
+    assert!(
+        has_crypto,
+        "Expected at least one crypto address to be detected"
     );
-    assert!(has_crypto, "Expected at least one crypto address to be detected");
 
     // Anonymize with hash strategy
     let config = AnonymizerConfig {
@@ -248,8 +279,12 @@ fn test_crypto_entities() {
     let anonymized = engine.anonymize(text, None, &config).unwrap();
 
     // Verify addresses are redacted
-    assert!(!anonymized.text.contains("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
-    assert!(!anonymized.text.contains("0x742d35Cc6634C0532925a3b844Bc9e7595f01234"));
+    assert!(!anonymized
+        .text
+        .contains("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
+    assert!(!anonymized
+        .text
+        .contains("0x742d35Cc6634C0532925a3b844Bc9e7595f01234"));
 }
 
 #[test]
@@ -273,12 +308,19 @@ fn test_technical_entities() {
     let filtered = policy.apply(analysis.detected_entities);
 
     // Verify at least some technical entities are detected
-    let tech_count = filtered.iter().filter(|e|
-        e.entity_type == EntityType::Guid ||
-        e.entity_type == EntityType::MacAddress ||
-        e.entity_type == EntityType::Md5Hash
-    ).count();
-    assert!(tech_count >= 2, "Expected at least 2 technical entities to be detected, found {}", tech_count);
+    let tech_count = filtered
+        .iter()
+        .filter(|e| {
+            e.entity_type == EntityType::Guid
+                || e.entity_type == EntityType::MacAddress
+                || e.entity_type == EntityType::Md5Hash
+        })
+        .count();
+    assert!(
+        tech_count >= 2,
+        "Expected at least 2 technical entities to be detected, found {}",
+        tech_count
+    );
 
     // Anonymize
     let config = AnonymizerConfig {
@@ -316,14 +358,17 @@ fn test_policy_confidence_threshold_filtering() {
 
     // With high threshold, some low-confidence results might be filtered
     // But typical email patterns should still pass
-    let email_results: Vec<_> = filtered.iter()
+    let email_results: Vec<_> = filtered
+        .iter()
         .filter(|e| e.entity_type == EntityType::EmailAddress)
         .collect();
 
     // Verify filtering logic works (entities must meet threshold)
     for result in email_results {
-        assert!(result.score >= 0.95 || result.score >= 0.8,
-                "Filtered results should meet confidence threshold");
+        assert!(
+            result.score >= 0.95 || result.score >= 0.8,
+            "Filtered results should meet confidence threshold"
+        );
     }
 }
 
@@ -347,7 +392,9 @@ fn test_policy_disabled_entity() {
     let filtered = policy.apply(analysis.detected_entities);
 
     // Email should be included (enabled)
-    assert!(filtered.iter().any(|e| e.entity_type == EntityType::EmailAddress));
+    assert!(filtered
+        .iter()
+        .any(|e| e.entity_type == EntityType::EmailAddress));
 
     // Phone will be included because disabled rules don't filter in current implementation
     // (they just don't have specific rules applied)
@@ -430,11 +477,13 @@ fn test_end_to_end_analyze_and_anonymize() {
     let filtered = policy.apply(analysis.detected_entities);
 
     // Verify multiple entity types detected
-    let entity_types: std::collections::HashSet<_> = filtered.iter()
-        .map(|e| e.entity_type.clone())
-        .collect();
+    let entity_types: std::collections::HashSet<_> =
+        filtered.iter().map(|e| e.entity_type.clone()).collect();
 
-    assert!(entity_types.len() >= 3, "Should detect at least 3 different entity types");
+    assert!(
+        entity_types.len() >= 3,
+        "Should detect at least 3 different entity types"
+    );
 
     // Anonymize with replace strategy
     let config = AnonymizerConfig {
@@ -455,7 +504,9 @@ fn test_end_to_end_analyze_and_anonymize() {
     assert!(!anonymized.text.contains("john@example.com"));
     assert!(!anonymized.text.contains("123-45-6789"));
     assert!(!anonymized.text.contains("4532015112830366"));
-    assert!(!anonymized.text.contains("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
+    assert!(!anonymized
+        .text
+        .contains("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
 
     // Placeholders should be present
     assert!(anonymized.text.contains("[EMAIL_ADDRESS]"));
@@ -475,9 +526,7 @@ fn test_inactive_policy_no_filtering() {
     let text = "Email: test@example.com";
 
     // Create inactive policy
-    let mut policy = create_test_policy(vec![
-        create_pattern_rule("EMAIL_ADDRESS", 0.95),
-    ]);
+    let mut policy = create_test_policy(vec![create_pattern_rule("EMAIL_ADDRESS", 0.95)]);
     policy.status = PolicyStatus::Inactive;
 
     // Analyze
@@ -500,13 +549,15 @@ fn test_entity_type_specific_analysis() {
     // Analyze only for specific entity types
     let target_entities = vec![EntityType::EmailAddress, EntityType::UsSsn];
 
-    let result = engine.analyze_with_entities(text, &target_entities, None).unwrap();
+    let result = engine
+        .analyze_with_entities(text, &target_entities, None)
+        .unwrap();
 
     // Should only detect the targeted entity types
     for entity in result.detected_entities {
         assert!(
-            entity.entity_type == EntityType::EmailAddress ||
-            entity.entity_type == EntityType::UsSsn,
+            entity.entity_type == EntityType::EmailAddress
+                || entity.entity_type == EntityType::UsSsn,
             "Should only detect targeted entity types"
         );
     }
@@ -530,17 +581,23 @@ fn test_all_entity_categories_comprehensive() {
     let analysis = engine.analyze(text, None).unwrap();
 
     // Should detect multiple entities
-    assert!(analysis.detected_entities.len() >= 10,
-            "Should detect at least 10 entities from various categories");
+    assert!(
+        analysis.detected_entities.len() >= 10,
+        "Should detect at least 10 entities from various categories"
+    );
 
     // Verify we have entities from different categories
-    let entity_types: std::collections::HashSet<_> = analysis.detected_entities.iter()
+    let entity_types: std::collections::HashSet<_> = analysis
+        .detected_entities
+        .iter()
         .map(|e| e.entity_type.clone())
         .collect();
 
     // Should have good variety of entity types
-    assert!(entity_types.len() >= 8,
-            "Should detect at least 8 different entity types");
+    assert!(
+        entity_types.len() >= 8,
+        "Should detect at least 8 different entity types"
+    );
 
     // Anonymize everything
     let config = AnonymizerConfig {
@@ -555,5 +612,7 @@ fn test_all_entity_categories_comprehensive() {
     assert!(!anonymized.text.contains("john@example.com"));
     assert!(!anonymized.text.contains("4532015112830366"));
     assert!(!anonymized.text.contains("123-45-6789"));
-    assert!(!anonymized.text.contains("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
+    assert!(!anonymized
+        .text
+        .contains("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
 }

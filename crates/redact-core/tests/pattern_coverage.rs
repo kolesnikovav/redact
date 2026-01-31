@@ -2,7 +2,6 @@
 ///
 /// This test suite validates detection of every entity type supported by the
 /// pattern recognizer, ensuring complete coverage of the PII detection system.
-
 use redact_core::{AnalyzerEngine, EntityType};
 
 fn create_engine() -> AnalyzerEngine {
@@ -13,15 +12,15 @@ fn assert_entity_detected(text: &str, entity_type: EntityType, min_score: f32) {
     let engine = create_engine();
     let result = engine.analyze(text, None).unwrap();
 
-    let found = result.detected_entities.iter()
+    let found = result
+        .detected_entities
+        .iter()
         .any(|e| e.entity_type == entity_type && e.score >= min_score);
 
     assert!(
         found,
         "Failed to detect {:?} in text: '{}'\nDetected: {:?}",
-        entity_type,
-        text,
-        result.detected_entities
+        entity_type, text, result.detected_entities
     );
 }
 
@@ -36,11 +35,7 @@ fn test_email_address() {
         EntityType::EmailAddress,
         0.8,
     );
-    assert_entity_detected(
-        "admin+test@sub.domain.co.uk",
-        EntityType::EmailAddress,
-        0.8,
-    );
+    assert_entity_detected("admin+test@sub.domain.co.uk", EntityType::EmailAddress, 0.8);
 }
 
 #[test]
@@ -59,16 +54,8 @@ fn test_ip_address() {
 
 #[test]
 fn test_url() {
-    assert_entity_detected(
-        "Visit https://example.com/path",
-        EntityType::Url,
-        0.7,
-    );
-    assert_entity_detected(
-        "Check http://subdomain.example.org",
-        EntityType::Url,
-        0.7,
-    );
+    assert_entity_detected("Visit https://example.com/path", EntityType::Url, 0.7);
+    assert_entity_detected("Check http://subdomain.example.org", EntityType::Url, 0.7);
 }
 
 #[test]
@@ -85,32 +72,16 @@ fn test_domain_name() {
 #[test]
 fn test_credit_card() {
     // Pattern requires no separators for credit card numbers
-    assert_entity_detected(
-        "Card 4532123456789010",
-        EntityType::CreditCard,
-        0.9,
-    );
+    assert_entity_detected("Card 4532123456789010", EntityType::CreditCard, 0.9);
     // Test different card types
-    assert_entity_detected(
-        "Visa: 4532123456789",
-        EntityType::CreditCard,
-        0.9,
-    );
+    assert_entity_detected("Visa: 4532123456789", EntityType::CreditCard, 0.9);
 }
 
 #[test]
 fn test_iban_code() {
     // Pattern matches IBAN without spaces
-    assert_entity_detected(
-        "IBAN: GB82WEST12345698765432",
-        EntityType::IbanCode,
-        0.75,
-    );
-    assert_entity_detected(
-        "DE89370400440532013000",
-        EntityType::IbanCode,
-        0.75,
-    );
+    assert_entity_detected("IBAN: GB82WEST12345698765432", EntityType::IbanCode, 0.75);
+    assert_entity_detected("DE89370400440532013000", EntityType::IbanCode, 0.75);
 }
 
 #[test]
@@ -153,11 +124,7 @@ fn test_us_zip_code() {
 #[test]
 fn test_uk_nhs() {
     // Base confidence is 0.6, boosted by context words like "NHS"
-    assert_entity_detected(
-        "NHS number 123 456 7890",
-        EntityType::UkNhs,
-        0.7,
-    );
+    assert_entity_detected("NHS number 123 456 7890", EntityType::UkNhs, 0.7);
 }
 
 #[test]
@@ -222,11 +189,7 @@ fn test_medical_license() {
 #[test]
 fn test_medical_record_number() {
     // Requires "MRN" or "Medical Record" prefix for context
-    assert_entity_detected(
-        "MRN: ABC123456789",
-        EntityType::MedicalRecordNumber,
-        0.85,
-    );
+    assert_entity_detected("MRN: ABC123456789", EntityType::MedicalRecordNumber, 0.85);
     assert_entity_detected(
         "Medical Record: XYZ987654321",
         EntityType::MedicalRecordNumber,
@@ -377,11 +340,26 @@ fn test_multiple_entity_types_in_text() {
     assert!(result.detected_entities.len() >= 4);
 
     // Verify specific entities
-    assert!(result.detected_entities.iter().any(|e| e.entity_type == EntityType::EmailAddress));
-    assert!(result.detected_entities.iter().any(|e| e.entity_type == EntityType::PhoneNumber));
-    assert!(result.detected_entities.iter().any(|e| e.entity_type == EntityType::Url));
-    assert!(result.detected_entities.iter().any(|e| e.entity_type == EntityType::UsSsn));
-    assert!(result.detected_entities.iter().any(|e| e.entity_type == EntityType::CreditCard));
+    assert!(result
+        .detected_entities
+        .iter()
+        .any(|e| e.entity_type == EntityType::EmailAddress));
+    assert!(result
+        .detected_entities
+        .iter()
+        .any(|e| e.entity_type == EntityType::PhoneNumber));
+    assert!(result
+        .detected_entities
+        .iter()
+        .any(|e| e.entity_type == EntityType::Url));
+    assert!(result
+        .detected_entities
+        .iter()
+        .any(|e| e.entity_type == EntityType::UsSsn));
+    assert!(result
+        .detected_entities
+        .iter()
+        .any(|e| e.entity_type == EntityType::CreditCard));
 }
 
 #[test]
@@ -390,7 +368,9 @@ fn test_entity_with_surrounding_text() {
     let engine = create_engine();
 
     // Email should be detected
-    let result1 = engine.analyze("Email: test@example.com here", None).unwrap();
+    let result1 = engine
+        .analyze("Email: test@example.com here", None)
+        .unwrap();
     assert!(!result1.detected_entities.is_empty());
 
     // These should NOT be detected (false positives)

@@ -92,11 +92,11 @@ fn test_malformed_entities() {
     assert!(result.is_ok());
 
     // Malformed SSN
-    let result = engine.analyze("SSN: 123-45-678", None);  // Too short
+    let result = engine.analyze("SSN: 123-45-678", None); // Too short
     assert!(result.is_ok());
 
     // Malformed phone
-    let result = engine.analyze("Phone: 555-123", None);  // Too short
+    let result = engine.analyze("Phone: 555-123", None); // Too short
     assert!(result.is_ok());
 }
 
@@ -196,7 +196,11 @@ fn test_overlapping_entities() {
 
             // Check for overlaps
             let overlaps = e1.start < e2.end && e2.start < e1.end;
-            assert!(!overlaps, "Found overlapping entities: {:?} and {:?}", e1, e2);
+            assert!(
+                !overlaps,
+                "Found overlapping entities: {:?} and {:?}",
+                e1, e2
+            );
         }
     }
 }

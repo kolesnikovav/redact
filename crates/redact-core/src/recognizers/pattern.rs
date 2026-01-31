@@ -58,10 +58,7 @@ impl PatternRecognizer {
             score,
             context_words: vec![],
         };
-        self.patterns
-            .entry(entity_type)
-            .or_default()
-            .push(compiled);
+        self.patterns.entry(entity_type).or_default().push(compiled);
         Ok(())
     }
 
@@ -79,10 +76,7 @@ impl PatternRecognizer {
             score,
             context_words,
         };
-        self.patterns
-            .entry(entity_type)
-            .or_default()
-            .push(compiled);
+        self.patterns.entry(entity_type).or_default().push(compiled);
         Ok(())
     }
 
@@ -112,11 +106,7 @@ impl PatternRecognizer {
 
         // US SSN (simplified pattern - Rust regex doesn't support lookahead)
         // Pattern matches XXX-XX-XXXX format
-        let _ = self.add_pattern(
-            EntityType::UsSsn,
-            r"\b\d{3}-\d{2}-\d{4}\b",
-            0.9,
-        );
+        let _ = self.add_pattern(EntityType::UsSsn, r"\b\d{3}-\d{2}-\d{4}\b", 0.9);
 
         // IP Address (IPv4)
         let _ = self.add_pattern(
@@ -151,7 +141,11 @@ impl PatternRecognizer {
             EntityType::UkNhs,
             r"\b(?:\d{3}\s?\d{3}\s?\d{4}|\d{10})\b",
             0.6,
-            vec!["NHS".to_string(), "patient".to_string(), "health".to_string()],
+            vec![
+                "NHS".to_string(),
+                "patient".to_string(),
+                "health".to_string(),
+            ],
         );
 
         // UK National Insurance Number
@@ -169,11 +163,7 @@ impl PatternRecognizer {
         );
 
         // UK Sort Code
-        let _ = self.add_pattern(
-            EntityType::UkSortCode,
-            r"\b\d{2}-\d{2}-\d{2}\b",
-            0.7,
-        );
+        let _ = self.add_pattern(EntityType::UkSortCode, r"\b\d{2}-\d{2}-\d{2}\b", 0.7);
 
         // IBAN
         let _ = self.add_pattern(
@@ -190,38 +180,22 @@ impl PatternRecognizer {
         );
 
         // Ethereum Address
-        let _ = self.add_pattern(
-            EntityType::EthAddress,
-            r"\b0x[a-fA-F0-9]{40}\b",
-            0.9,
-        );
+        let _ = self.add_pattern(EntityType::EthAddress, r"\b0x[a-fA-F0-9]{40}\b", 0.9);
 
         // MD5 Hash
-        let _ = self.add_pattern(
-            EntityType::Md5Hash,
-            r"\b[a-fA-F0-9]{32}\b",
-            0.6,
-        );
+        let _ = self.add_pattern(EntityType::Md5Hash, r"\b[a-fA-F0-9]{32}\b", 0.6);
 
         // SHA1 Hash
-        let _ = self.add_pattern(
-            EntityType::Sha1Hash,
-            r"\b[a-fA-F0-9]{40}\b",
-            0.6,
-        );
+        let _ = self.add_pattern(EntityType::Sha1Hash, r"\b[a-fA-F0-9]{40}\b", 0.6);
 
         // SHA256 Hash
-        let _ = self.add_pattern(
-            EntityType::Sha256Hash,
-            r"\b[a-fA-F0-9]{64}\b",
-            0.6,
-        );
+        let _ = self.add_pattern(EntityType::Sha256Hash, r"\b[a-fA-F0-9]{64}\b", 0.6);
 
         // US ZIP Code (5 digits or ZIP+4 format)
         let _ = self.add_pattern(
             EntityType::UsZipCode,
             r"\b\d{5}(?:-\d{4})?\b",
-            0.6,  // Lower confidence as could be other 5-digit numbers
+            0.6, // Lower confidence as could be other 5-digit numbers
         );
 
         // PO Box
@@ -229,7 +203,11 @@ impl PatternRecognizer {
             EntityType::PoBox,
             r"\b(?:P\.?\s?O\.?|POST\s+OFFICE)\s*BOX\s+\d+\b",
             0.85,
-            vec!["address".to_string(), "mail".to_string(), "ship".to_string()],
+            vec![
+                "address".to_string(),
+                "mail".to_string(),
+                "ship".to_string(),
+            ],
         );
 
         // ISBN (10 or 13 digit formats)
@@ -252,7 +230,11 @@ impl PatternRecognizer {
             EntityType::MedicalRecordNumber,
             r"\b(?:MRN|Medical\s*Record|Patient\s*ID):?\s*[A-Z0-9]{6,12}\b",
             0.85,
-            vec!["patient".to_string(), "medical".to_string(), "hospital".to_string()],
+            vec![
+                "patient".to_string(),
+                "medical".to_string(),
+                "hospital".to_string(),
+            ],
         );
 
         // Age (with context)
@@ -450,9 +432,7 @@ mod tests {
         let results = recognizer.analyze(text, "en").unwrap();
 
         assert!(!results.is_empty());
-        let nino_result = results
-            .iter()
-            .find(|r| r.entity_type == EntityType::UkNino);
+        let nino_result = results.iter().find(|r| r.entity_type == EntityType::UkNino);
         assert!(nino_result.is_some());
     }
 
@@ -476,7 +456,11 @@ mod tests {
     fn test_custom_pattern() {
         let mut recognizer = PatternRecognizer::new();
         recognizer
-            .add_pattern(EntityType::Custom("CUSTOM_ID".to_string()), r"\bCID-\d{6}\b", 0.9)
+            .add_pattern(
+                EntityType::Custom("CUSTOM_ID".to_string()),
+                r"\bCID-\d{6}\b",
+                0.9,
+            )
             .unwrap();
 
         let text = "Your customer ID is CID-123456";

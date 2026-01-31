@@ -62,9 +62,9 @@ impl RecognizerRegistry {
                 continue;
             }
 
-            let results = recognizer
-                .analyze(text, language)
-                .with_context(|| format!("Failed to analyze with recognizer: {}", recognizer.name()))?;
+            let results = recognizer.analyze(text, language).with_context(|| {
+                format!("Failed to analyze with recognizer: {}", recognizer.name())
+            })?;
 
             all_results.extend(results);
         }
@@ -101,9 +101,9 @@ impl RecognizerRegistry {
                 continue;
             }
 
-            let results = recognizer
-                .analyze(text, language)
-                .with_context(|| format!("Failed to analyze with recognizer: {}", recognizer.name()))?;
+            let results = recognizer.analyze(text, language).with_context(|| {
+                format!("Failed to analyze with recognizer: {}", recognizer.name())
+            })?;
 
             // Filter to only requested entity types
             let filtered: Vec<_> = results
@@ -239,7 +239,9 @@ mod tests {
             .unwrap();
 
         // Should only get email results
-        assert!(results.iter().all(|r| r.entity_type == EntityType::EmailAddress));
+        assert!(results
+            .iter()
+            .all(|r| r.entity_type == EntityType::EmailAddress));
     }
 
     #[test]

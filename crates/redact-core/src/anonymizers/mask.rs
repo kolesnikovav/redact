@@ -53,13 +53,7 @@ impl MaskAnonymizer {
     /// Mask text while preserving format (e.g., XXX-XX-XXXX)
     fn mask_with_format(text: &str, mask_char: char) -> String {
         text.chars()
-            .map(|c| {
-                if c.is_alphanumeric() {
-                    mask_char
-                } else {
-                    c
-                }
-            })
+            .map(|c| if c.is_alphanumeric() { mask_char } else { c })
             .collect()
     }
 }

@@ -25,7 +25,6 @@
 /// - `Davlan/distilbert-base-multilingual-cased-ner-hrl` (~500MB) - Multilingual
 ///
 /// For faster CI testing, use quantized or distilled models (~50-100MB).
-
 use anyhow::Result;
 use redact_core::{AnalyzerEngine, EntityType, Recognizer};
 use redact_ner::{NerConfig, NerRecognizer};
@@ -82,7 +81,10 @@ fn test_ner_with_bert_base() -> Result<()> {
 
     if !model_exists(model_dir) {
         eprintln!("Model not found at: {}", model_dir);
-        eprintln!("Run: python scripts/export_ner_model.py --model dslim/bert-base-NER --output {}", model_dir);
+        eprintln!(
+            "Run: python scripts/export_ner_model.py --model dslim/bert-base-NER --output {}",
+            model_dir
+        );
         return Ok(()); // Skip test if model not available
     }
 
@@ -95,7 +97,10 @@ fn test_ner_with_bert_base() -> Result<()> {
     };
 
     let recognizer = NerRecognizer::from_config(config)?;
-    assert!(recognizer.is_available(), "NER should be available with model");
+    assert!(
+        recognizer.is_available(),
+        "NER should be available with model"
+    );
 
     // Test each case
     for test_case in get_test_cases() {
@@ -111,10 +116,7 @@ fn test_ner_with_bert_base() -> Result<()> {
             assert!(
                 found,
                 "Expected to find {:?} '{}' in text: '{}'\nDetected: {:?}",
-                expected_type,
-                expected_text,
-                test_case.text,
-                results
+                expected_type, expected_text, test_case.text, results
             );
         }
     }
@@ -230,7 +232,10 @@ fn test_ner_long_text() -> Result<()> {
     let results = recognizer.analyze(long_text, "en")?;
 
     // Should detect at least the entities within max_seq_length
-    assert!(!results.is_empty(), "Should detect entities even in long text");
+    assert!(
+        !results.is_empty(),
+        "Should detect entities even in long text"
+    );
 
     Ok(())
 }
@@ -257,7 +262,9 @@ fn test_ner_with_analyzer_engine() -> Result<()> {
 
     // Create analyzer engine with both pattern and NER recognizers
     let mut engine = AnalyzerEngine::new();
-    engine.recognizer_registry_mut().add_recognizer(Arc::new(ner));
+    engine
+        .recognizer_registry_mut()
+        .add_recognizer(Arc::new(ner));
 
     let text = "Contact John Doe at john@example.com or visit Microsoft.com. SSN: 123-45-6789.";
     let result = engine.analyze(text, None)?;
@@ -320,7 +327,10 @@ fn test_ner_performance() -> Result<()> {
     let avg_latency = elapsed / iterations;
 
     println!("Average NER inference latency: {:?}", avg_latency);
-    println!("Throughput: {:.2} req/s", 1000.0 / avg_latency.as_millis() as f64);
+    println!(
+        "Throughput: {:.2} req/s",
+        1000.0 / avg_latency.as_millis() as f64
+    );
 
     // Assert reasonable performance (adjust based on hardware)
     assert!(

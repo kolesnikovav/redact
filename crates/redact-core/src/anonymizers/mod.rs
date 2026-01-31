@@ -1,8 +1,8 @@
 pub mod encrypt;
 pub mod hash;
 pub mod mask;
-pub mod replace;
 pub mod registry;
+pub mod replace;
 
 pub use registry::AnonymizerRegistry;
 
@@ -145,7 +145,7 @@ mod tests {
         let text = "Email: john@example.com, Phone: 555-1234";
         let entities = vec![
             RecognizerResult::new(EntityType::EmailAddress, 7, 23, 0.9, "test"),
-            RecognizerResult::new(EntityType::PhoneNumber, 32, 40, 0.8, "test"),  // Fixed positions
+            RecognizerResult::new(EntityType::PhoneNumber, 32, 40, 0.8, "test"), // Fixed positions
         ];
 
         let result = apply_anonymization(text, &entities, |e, _| {

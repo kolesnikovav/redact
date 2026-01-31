@@ -1,8 +1,6 @@
 use crate::anonymizers::{AnonymizerConfig, AnonymizerRegistry};
 use crate::recognizers::{pattern::PatternRecognizer, RecognizerRegistry};
-use crate::types::{
-    AnalysisMetadata, AnalysisResult, AnonymizedResult, EntityType,
-};
+use crate::types::{AnalysisMetadata, AnalysisResult, AnonymizedResult, EntityType};
 use anyhow::Result;
 use std::sync::Arc;
 use std::time::Instant;
@@ -102,9 +100,9 @@ impl AnalyzerEngine {
         let start = Instant::now();
         let lang = language.unwrap_or(&self.default_language);
 
-        let detected_entities = self
-            .recognizer_registry
-            .analyze_with_entities(text, lang, entity_types)?;
+        let detected_entities =
+            self.recognizer_registry
+                .analyze_with_entities(text, lang, entity_types)?;
 
         let processing_time_ms = start.elapsed().as_millis() as u64;
 
@@ -152,9 +150,9 @@ impl AnalyzerEngine {
         let mut result = self.analyze(text, Some(lang))?;
 
         // Anonymize
-        let anonymized = self
-            .anonymizer_registry
-            .anonymize(text, result.detected_entities.clone(), config)?;
+        let anonymized =
+            self.anonymizer_registry
+                .anonymize(text, result.detected_entities.clone(), config)?;
 
         result.anonymized = Some(anonymized);
         result.metadata.processing_time_ms = start.elapsed().as_millis() as u64;

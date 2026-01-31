@@ -153,6 +153,9 @@ mod tests {
         let hash1 = anonymizer.hash_value("test1@example.com", None);
         let hash2 = anonymizer.hash_value("test2@example.com", None);
 
-        assert_ne!(hash1, hash2, "Different values should produce different hashes");
+        assert_ne!(
+            hash1, hash2,
+            "Different values should produce different hashes"
+        );
     }
 }

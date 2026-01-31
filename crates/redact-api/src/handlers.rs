@@ -1,6 +1,6 @@
 use crate::models::{
-    AnalyzeRequest, AnalyzeResponse, AnonymizeRequest, AnonymizeResponse,
-    EntityResult, ErrorResponse, HealthResponse, TokenInfo,
+    AnalyzeRequest, AnalyzeResponse, AnonymizeRequest, AnonymizeResponse, EntityResult,
+    ErrorResponse, HealthResponse, TokenInfo,
 };
 use axum::{
     extract::State,
@@ -138,12 +138,7 @@ pub async fn anonymize(
     }
 
     // Convert API config to core config
-    let mask_char = request
-        .config
-        .mask_char
-        .chars()
-        .next()
-        .unwrap_or('*');
+    let mask_char = request.config.mask_char.chars().next().unwrap_or('*');
 
     let core_config = AnonymizerConfig {
         strategy: request.config.strategy,
@@ -175,7 +170,11 @@ pub async fn anonymize(
         let anonymized = state
             .engine
             .anonymizer_registry()
-            .anonymize(&request.text, analysis.detected_entities.clone(), &core_config)
+            .anonymize(
+                &request.text,
+                analysis.detected_entities.clone(),
+                &core_config,
+            )
             .map_err(ApiError::from)?;
 
         (analysis.detected_entities, anonymized, analysis.metadata)
@@ -185,9 +184,9 @@ pub async fn anonymize(
             .analyze_and_anonymize(&request.text, Some(&request.language), &core_config)
             .map_err(ApiError::from)?;
 
-        let anonymized = analysis.anonymized.ok_or_else(|| {
-            ApiError::internal_error("Anonymization failed")
-        })?;
+        let anonymized = analysis
+            .anonymized
+            .ok_or_else(|| ApiError::internal_error("Anonymization failed"))?;
 
         (analysis.detected_entities, anonymized, analysis.metadata)
     };

@@ -17,7 +17,11 @@ impl ReplaceAnonymizer {
     }
 
     /// Add a custom replacement for a specific entity type
-    pub fn with_replacement(mut self, entity_type: impl Into<String>, replacement: impl Into<String>) -> Self {
+    pub fn with_replacement(
+        mut self,
+        entity_type: impl Into<String>,
+        replacement: impl Into<String>,
+    ) -> Self {
         self.custom_replacements
             .insert(entity_type.into(), replacement.into());
         self
@@ -83,8 +87,8 @@ mod tests {
 
     #[test]
     fn test_replace_with_custom() {
-        let anonymizer = ReplaceAnonymizer::new()
-            .with_replacement("EMAIL_ADDRESS", "[REDACTED_EMAIL]");
+        let anonymizer =
+            ReplaceAnonymizer::new().with_replacement("EMAIL_ADDRESS", "[REDACTED_EMAIL]");
 
         let text = "Email: john@example.com";
         let entities = vec![RecognizerResult::new(
@@ -107,7 +111,7 @@ mod tests {
         let text = "Email: john@example.com, Phone: 555-1234";
         let entities = vec![
             RecognizerResult::new(EntityType::EmailAddress, 7, 23, 0.9, "test"),
-            RecognizerResult::new(EntityType::PhoneNumber, 32, 40, 0.8, "test"),  // Fixed positions
+            RecognizerResult::new(EntityType::PhoneNumber, 32, 40, 0.8, "test"), // Fixed positions
         ];
         let config = AnonymizerConfig::default();
 

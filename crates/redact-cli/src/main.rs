@@ -190,7 +190,10 @@ fn parse_entity_types(entities: &[String]) -> Result<Option<Vec<EntityType>>> {
                 "Md5Hash" => Ok(EntityType::Md5Hash),
                 "Sha1Hash" => Ok(EntityType::Sha1Hash),
                 "Sha256Hash" => Ok(EntityType::Sha256Hash),
-                _ => Err(anyhow::anyhow!("Invalid entity type: {}. See --help for valid types", e)),
+                _ => Err(anyhow::anyhow!(
+                    "Invalid entity type: {}. See --help for valid types",
+                    e
+                )),
             }
         })
         .collect();
@@ -220,7 +223,10 @@ fn analyze(
             if result.detected_entities.is_empty() {
                 println!("No PII entities detected.");
             } else {
-                println!("Detected {} PII entities:\n", result.detected_entities.len());
+                println!(
+                    "Detected {} PII entities:\n",
+                    result.detected_entities.len()
+                );
                 for entity in &result.detected_entities {
                     let text_preview = entity.text.as_deref().unwrap_or("");
                     println!(
@@ -228,7 +234,10 @@ fn analyze(
                         entity.entity_type, entity.start, entity.end, entity.score, text_preview
                     );
                 }
-                println!("\nProcessing time: {}ms", result.metadata.processing_time_ms);
+                println!(
+                    "\nProcessing time: {}ms",
+                    result.metadata.processing_time_ms
+                );
             }
         }
     }
@@ -258,9 +267,11 @@ fn anonymize(
     };
 
     // Then anonymize the detected entities
-    let anonymized = engine
-        .anonymizer_registry()
-        .anonymize(text, analysis.detected_entities.clone(), &config)?;
+    let anonymized = engine.anonymizer_registry().anonymize(
+        text,
+        analysis.detected_entities.clone(),
+        &config,
+    )?;
 
     match format {
         OutputFormat::Json => {

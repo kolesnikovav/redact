@@ -1,6 +1,6 @@
 use super::{
     encrypt::EncryptAnonymizer, hash::HashAnonymizer, mask::MaskAnonymizer,
-    replace::ReplaceAnonymizer, Anonymizer, AnonymizerConfig, AnonymizationStrategy,
+    replace::ReplaceAnonymizer, AnonymizationStrategy, Anonymizer, AnonymizerConfig,
 };
 use crate::types::{AnonymizedResult, RecognizerResult};
 use anyhow::{anyhow, Result};
@@ -33,14 +33,8 @@ impl AnonymizerRegistry {
             AnonymizationStrategy::Replace,
             Arc::new(ReplaceAnonymizer::new()),
         );
-        registry.register(
-            AnonymizationStrategy::Mask,
-            Arc::new(MaskAnonymizer::new()),
-        );
-        registry.register(
-            AnonymizationStrategy::Hash,
-            Arc::new(HashAnonymizer::new()),
-        );
+        registry.register(AnonymizationStrategy::Mask, Arc::new(MaskAnonymizer::new()));
+        registry.register(AnonymizationStrategy::Hash, Arc::new(HashAnonymizer::new()));
         registry.register(
             AnonymizationStrategy::Encrypt,
             Arc::new(EncryptAnonymizer::new()),

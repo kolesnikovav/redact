@@ -14,10 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 1. Health check
     println!("--- Health Check ---");
-    let health_response = client
-        .get(&format!("{}/health", base_url))
-        .send()
-        .await?;
+    let health_response = client.get(format!("{}/health", base_url)).send().await?;
 
     println!("Status: {}", health_response.status());
     let health: serde_json::Value = health_response.json().await?;
@@ -31,7 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let analyze_response = client
-        .post(&format!("{}/api/v1/analyze", base_url))
+        .post(format!("{}/api/v1/analyze", base_url))
         .json(&analyze_request)
         .send()
         .await?;
@@ -51,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let anonymize_response = client
-        .post(&format!("{}/api/v1/anonymize", base_url))
+        .post(format!("{}/api/v1/anonymize", base_url))
         .json(&anonymize_request)
         .send()
         .await?;
@@ -75,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let mask_response = client
-        .post(&format!("{}/api/v1/anonymize", base_url))
+        .post(format!("{}/api/v1/anonymize", base_url))
         .json(&mask_request)
         .send()
         .await?;

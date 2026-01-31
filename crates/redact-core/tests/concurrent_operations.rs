@@ -83,7 +83,9 @@ fn test_concurrent_mixed_operations() {
                     strategy: AnonymizationStrategy::Mask,
                     ..Default::default()
                 };
-                engine_clone.analyze_and_anonymize(&text, None, &config).unwrap()
+                engine_clone
+                    .analyze_and_anonymize(&text, None, &config)
+                    .unwrap()
             }
         });
         handles.push(handle);
@@ -102,7 +104,7 @@ fn test_concurrent_with_different_languages() {
 
     // Note: Pattern recognizer currently only supports English
     // This test verifies that specifying different languages doesn't cause crashes
-    let languages = vec!["en", "en", "en", "en"];  // Use English for all
+    let languages = vec!["en", "en", "en", "en"]; // Use English for all
 
     for (i, lang) in languages.iter().enumerate() {
         let engine_clone = Arc::clone(&engine);
@@ -276,7 +278,10 @@ fn test_concurrent_reads_no_writes() {
     let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
 
     for i in 1..results.len() {
-        assert_eq!(results[0].detected_entities.len(), results[i].detected_entities.len());
+        assert_eq!(
+            results[0].detected_entities.len(),
+            results[i].detected_entities.len()
+        );
     }
 }
 

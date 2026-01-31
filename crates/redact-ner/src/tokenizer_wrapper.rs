@@ -14,15 +14,16 @@ pub struct TokenizerWrapper {
 impl TokenizerWrapper {
     /// Load tokenizer from a JSON file
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let tokenizer = Tokenizer::from_file(path)
-            .map_err(|e| anyhow!("Failed to load tokenizer: {}", e))?;
+        let tokenizer =
+            Tokenizer::from_file(path).map_err(|e| anyhow!("Failed to load tokenizer: {}", e))?;
 
         Ok(Self { tokenizer })
     }
 
     /// Encode text into tokens with character offsets
     pub fn encode(&self, text: &str, add_special_tokens: bool) -> Result<Encoding> {
-        let encoding = self.tokenizer
+        let encoding = self
+            .tokenizer
             .encode(text, add_special_tokens)
             .map_err(|e| anyhow!("Tokenization failed: {}", e))?;
 
@@ -41,8 +42,7 @@ impl TokenizerWrapper {
 
     /// Get the padding token ID
     pub fn get_padding_id(&self) -> Option<u32> {
-        self.tokenizer.get_padding()
-            .map(|p| p.pad_id)
+        self.tokenizer.get_padding().map(|p| p.pad_id)
     }
 
     /// Get the vocabulary size
@@ -76,10 +76,14 @@ impl Encoding {
         } else if self.ids.len() < max_length {
             // Pad
             let padding_needed = max_length - self.ids.len();
-            self.ids.extend(std::iter::repeat(pad_id).take(padding_needed));
-            self.tokens.extend(std::iter::repeat("[PAD]".to_string()).take(padding_needed));
-            self.offsets.extend(std::iter::repeat((0, 0)).take(padding_needed));
-            self.attention_mask.extend(std::iter::repeat(0).take(padding_needed));
+            self.ids
+                .extend(std::iter::repeat(pad_id).take(padding_needed));
+            self.tokens
+                .extend(std::iter::repeat("[PAD]".to_string()).take(padding_needed));
+            self.offsets
+                .extend(std::iter::repeat((0, 0)).take(padding_needed));
+            self.attention_mask
+                .extend(std::iter::repeat(0).take(padding_needed));
         }
     }
 

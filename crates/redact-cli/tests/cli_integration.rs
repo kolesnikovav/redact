@@ -29,7 +29,9 @@ fn test_cli_help() {
         .arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("PII detection and anonymization CLI"));
+        .stdout(predicate::str::contains(
+            "PII detection and anonymization CLI",
+        ));
 }
 
 #[test]
@@ -164,7 +166,7 @@ fn test_anonymize_encrypt_strategy() {
     cli()
         .arg("anonymize")
         .arg("--strategy")
-        .arg("mask")  // Use mask instead as encrypt needs encryption_key
+        .arg("mask") // Use mask instead as encrypt needs encryption_key
         .arg("Email: john@example.com")
         .assert()
         .success()

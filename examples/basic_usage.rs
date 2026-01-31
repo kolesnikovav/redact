@@ -2,9 +2,7 @@
 //!
 //! Run with: cargo run --example basic_usage
 
-use redact_core::{
-    AnalyzerEngine, AnonymizerConfig, AnonymizationStrategy, EntityType,
-};
+use redact_core::{AnalyzerEngine, AnonymizationStrategy, AnonymizerConfig, EntityType};
 
 fn main() -> anyhow::Result<()> {
     println!("=== Redact PII Detection Engine - Basic Usage Example ===\n");
@@ -83,14 +81,21 @@ fn main() -> anyhow::Result<()> {
     println!("Looking for specific entities (email, phone, SSN):");
     println!("Found {} matches:", targeted.detected_entities.len());
     for entity in &targeted.detected_entities {
-        println!("  - {:?}: {}", entity.entity_type, entity.text.as_ref().unwrap());
+        println!(
+            "  - {:?}: {}",
+            entity.entity_type,
+            entity.text.as_ref().unwrap()
+        );
     }
     println!();
 
     // 4. Performance metrics
     println!("--- Step 4: Performance Metrics ---");
     println!("Recognizers used: {}", analysis.metadata.recognizers_used);
-    println!("Processing time: {}ms", analysis.metadata.processing_time_ms);
+    println!(
+        "Processing time: {}ms",
+        analysis.metadata.processing_time_ms
+    );
     println!("Language: {}", analysis.metadata.language);
 
     Ok(())

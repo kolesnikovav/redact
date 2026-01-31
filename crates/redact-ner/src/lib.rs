@@ -31,7 +31,7 @@
 mod recognizer;
 mod tokenizer_wrapper;
 
-pub use recognizer::{NerRecognizer, NerConfig};
+pub use recognizer::{NerConfig, NerRecognizer};
 
 #[cfg(test)]
 mod tests {

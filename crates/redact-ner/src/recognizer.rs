@@ -140,7 +140,10 @@ impl NerRecognizer {
                     Some(t)
                 }
                 Err(e) => {
-                    warn!("Failed to load tokenizer: {}. NER will not be available.", e);
+                    warn!(
+                        "Failed to load tokenizer: {}. NER will not be available.",
+                        e
+                    );
                     None
                 }
             }
@@ -187,12 +190,18 @@ impl NerRecognizer {
                         Some(Mutex::new(s))
                     }
                     Err(e) => {
-                        warn!("Failed to load ONNX model: {}. NER will not be available.", e);
+                        warn!(
+                            "Failed to load ONNX model: {}. NER will not be available.",
+                            e
+                        );
                         None
                     }
                 }
             } else {
-                debug!("Model path provided but file does not exist: {}", config.model_path);
+                debug!(
+                    "Model path provided but file does not exist: {}",
+                    config.model_path
+                );
                 None
             }
         } else {
@@ -237,10 +246,13 @@ impl NerRecognizer {
 
     /// Run inference on tokenized input
     fn infer(&self, input_ids: &[u32], attention_mask: &[u32]) -> Result<Vec<Vec<f32>>> {
-        let session_mutex = self.session.as_ref()
+        let session_mutex = self
+            .session
+            .as_ref()
             .ok_or_else(|| anyhow!("ONNX session not loaded"))?;
 
-        let mut session = session_mutex.lock()
+        let mut session = session_mutex
+            .lock()
             .map_err(|e| anyhow!("Failed to lock session: {}", e))?;
 
         // Create 2D arrays with shape [1, seq_len]
@@ -287,7 +299,10 @@ impl NerRecognizer {
     fn softmax(logits: &[f32]) -> Vec<f32> {
         let max_logit = logits.iter().copied().fold(f32::NEG_INFINITY, f32::max);
         let exp_sum: f32 = logits.iter().map(|&x| (x - max_logit).exp()).sum();
-        logits.iter().map(|&x| (x - max_logit).exp() / exp_sum).collect()
+        logits
+            .iter()
+            .map(|&x| (x - max_logit).exp() / exp_sum)
+            .collect()
     }
 
     /// Parse BIO tags and extract entity spans
@@ -307,7 +322,10 @@ impl NerRecognizer {
                 continue;
             }
 
-            let label = self.config.id2label.get(&pred_id)
+            let label = self
+                .config
+                .id2label
+                .get(&pred_id)
                 .map(|s| s.as_str())
                 .unwrap_or("O");
 
@@ -431,7 +449,8 @@ impl Recognizer for NerRecognizer {
 
         for token_logits in &logits {
             let probs = Self::softmax(token_logits);
-            let (pred_id, &max_prob) = probs.iter()
+            let (pred_id, &max_prob) = probs
+                .iter()
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
                 .unwrap();
@@ -440,19 +459,17 @@ impl Recognizer for NerRecognizer {
         }
 
         // Parse BIO tags to extract entities
-        let results = self.parse_bio_tags(
-            text,
-            &predictions,
-            &probabilities,
-            &encoding.offsets,
-        );
+        let results = self.parse_bio_tags(text, &predictions, &probabilities, &encoding.offsets);
 
         Ok(results)
     }
 
     fn supports_language(&self, language: &str) -> bool {
         // Most multilingual NER models support these languages
-        matches!(language, "en" | "es" | "fr" | "de" | "it" | "pt" | "nl" | "pl" | "ru" | "zh" | "ja" | "ko")
+        matches!(
+            language,
+            "en" | "es" | "fr" | "de" | "it" | "pt" | "nl" | "pl" | "ru" | "zh" | "ja" | "ko"
+        )
     }
 }
 

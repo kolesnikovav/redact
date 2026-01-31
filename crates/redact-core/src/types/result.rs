@@ -224,8 +224,7 @@ mod tests {
     #[test]
     fn test_with_text() {
         let source = "John Doe lives in New York";
-        let result = RecognizerResult::new(EntityType::Person, 0, 8, 0.9, "test")
-            .with_text(source);
+        let result = RecognizerResult::new(EntityType::Person, 0, 8, 0.9, "test").with_text(source);
 
         assert_eq!(result.text, Some("John Doe".to_string()));
     }

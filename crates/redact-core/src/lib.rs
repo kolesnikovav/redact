@@ -40,7 +40,7 @@ pub mod recognizers;
 pub mod types;
 
 // Re-export commonly used types
-pub use anonymizers::{AnonymizerConfig, AnonymizerRegistry, AnonymizationStrategy};
+pub use anonymizers::{AnonymizationStrategy, AnonymizerConfig, AnonymizerRegistry};
 pub use engine::AnalyzerEngine;
 pub use recognizers::{Recognizer, RecognizerRegistry};
 pub use types::{

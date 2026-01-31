@@ -47,7 +47,7 @@ pub enum EntityType {
     MedicalRecordNumber,
 
     // Generic identifiers
-    PassportNumber,  // Generic, non-country specific
+    PassportNumber, // Generic, non-country specific
     Age,
     Isbn,
     PoBox,
