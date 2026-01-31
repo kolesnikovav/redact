@@ -65,20 +65,24 @@ jobs:
       - name: Update CHANGELOG.md
         run: |
           TODAY=$(date +"%Y-%m-%d")
-          if grep -q "## \[${{ env.VERSION }}\]" CHANGELOG.md; then
+          VERSION="${{ env.VERSION }}"
+          if grep -q "## \[${VERSION}\]" CHANGELOG.md; then
             echo "Version already in CHANGELOG.md, skipping"
           else
-            sed -i "/^# Changelog/a\\
-\\
-## [${{ env.VERSION }}] - $TODAY\\
-\\
-### Added\\
-\\
-### Changed\\
-\\
-### Fixed\\
-" CHANGELOG.md
-            echo "Added ${{ env.VERSION }} entry to CHANGELOG.md"
+            # Create new changelog entry
+            ENTRY="## [${VERSION}] - ${TODAY}
+
+### Added
+
+### Changed
+
+### Fixed
+
+"
+            # Insert after "# Changelog" header
+            awk -v entry="$ENTRY" '/^# Changelog/{print; print ""; print entry; next}1' CHANGELOG.md > CHANGELOG.tmp
+            mv CHANGELOG.tmp CHANGELOG.md
+            echo "Added ${VERSION} entry to CHANGELOG.md"
           fi
 
       - name: Install Rust toolchain
