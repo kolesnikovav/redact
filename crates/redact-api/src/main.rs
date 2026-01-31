@@ -1,3 +1,8 @@
+// Copyright (c) 2026 Censgate LLC.
+// Licensed under the Business Source License 1.1 (BUSL-1.1).
+// See the LICENSE file in the project root for license details,
+// including the Additional Use Grant, Change Date, and Change License.
+
 use redact_api::server::{ApiServer, ServerConfig};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 

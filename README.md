@@ -498,9 +498,19 @@ git push origin feature/my-new-feature
 
 ## License
 
-Apache 2.0 — See [LICENSE](LICENSE) for details.
+Censgate Redact is licensed under the [Business Source License 1.1 (BUSL-1.1)](LICENSE).
 
-Copyright 2024 Censgate
+**Additional Use Grant:** You may use Censgate Redact in production to process up to 50,000 redacted records per month per legal entity, free of charge. Beyond this threshold, a commercial license is required. Contact support@censgate.com for commercial licensing.
+
+**Change Date:** On 1 March 2030 (or four years after each version's release, whichever comes first), each version of Censgate Redact automatically converts to the GNU General Public License v3.0 or later.
+
+See the [LICENSE](LICENSE) file for the complete license terms.
+
+### Mixed Licensing
+
+Unless explicitly stated otherwise in a subdirectory's own LICENSE file, all code in this repository is licensed under BUSL-1.1. Specific subdirectories (e.g., `sdk/` or `examples/`) may contain their own LICENSE files with different open source licenses (such as MIT or Apache-2.0) to facilitate integration.
+
+Copyright (c) 2026 Censgate LLC
 
 ## Acknowledgments
 
