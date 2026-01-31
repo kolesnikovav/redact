@@ -14,7 +14,6 @@ edition = "2021"
 rust-version = "1.88"
 authors = ["Censgate LLC <support@censgate.com>"]
 license = "BUSL-1.1"
-license-file = "LICENSE"
 repository = "https://github.com/censgate/redact"
 homepage = "https://github.com/censgate/redact"
 keywords = ["pii", "redaction", "privacy", "gdpr", "hipaa"]
