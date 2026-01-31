@@ -2,6 +2,15 @@
 
 Performance benchmarks comparing Redact against Microsoft Presidio.
 
+## Tool
+
+We use [**oha**](https://github.com/hatoo/oha) - a modern HTTP load testing tool written in Rust that provides:
+
+- Proper statistical analysis (percentiles: p50, p90, p99)
+- Latency histograms
+- JSON output for programmatic analysis
+- Consistent, reproducible measurements
+
 ## Why REST API Comparison?
 
 The **REST API benchmark is the fairest comparison** because:
@@ -11,62 +20,55 @@ The **REST API benchmark is the fairest comparison** because:
 3. **Language-agnostic** - Removes Python vs Rust runtime comparison noise
 4. **User-relevant** - This is how most teams would actually use either tool
 
-Other benchmark types are less meaningful:
-- **Library comparison** - Different languages (Rust vs Python), not comparable
-- **CLI comparison** - Presidio doesn't have a CLI equivalent
-
 ## Quick Start
 
 ```bash
-# REST API comparison (requires Docker)
+# Install oha
+cargo install oha
+
+# Run benchmark (requires Docker for Presidio)
 ./scripts/benchmark-comparison.sh
 
-# More iterations for statistical significance
-./scripts/benchmark-comparison.sh 100
-
-# Criterion micro-benchmarks (Redact internals)
-cargo bench --package redact-core
+# Custom parameters
+./scripts/benchmark-comparison.sh --requests 500 --concurrency 4
 ```
 
 ## Requirements
 
+- [oha](https://github.com/hatoo/oha) (`cargo install oha`)
 - Docker (for Presidio container)
 - Rust toolchain
-- `curl`, `jq`, `bc`
+- `jq`
 
-## What Gets Measured
+## Output
 
-### REST API Benchmark
+The benchmark produces:
 
-| Test Case | Description |
-|-----------|-------------|
-| 1 | Email + phone number |
-| 2 | SSN + credit card |
-| 3 | Healthcare PII (MRN, DOB, ZIP) |
+1. **Console output** - oha's histogram and statistics for each service
+2. **JSON files** - Raw data (`redact-*.json`, `presidio-*.json`)
+3. **Markdown report** - Summary comparison (`results-*.md`)
 
-Both services receive identical JSON payloads. Measurement is end-to-end HTTP latency.
+## Criterion Micro-Benchmarks
 
-### Criterion Micro-Benchmarks
+For Redact-internal performance (no HTTP overhead):
 
-Detailed Rust-level benchmarks for Redact internals:
+```bash
+cargo bench --package redact-core
+```
 
+Benchmarks include:
 - Single entity detection (email, SSN, phone, etc.)
 - Multiple entity detection
 - Text length scaling (100-5000 chars)
 - Anonymization strategies (replace, mask, hash)
 - Cold vs warm start performance
-- Batch throughput
-
-## Results
-
-Results are saved to `docs/benchmarks/results-YYYYMMDD-HHMMSS.md`.
 
 ## Expected Performance
 
 | Metric | Redact | Presidio | Why |
 |--------|--------|----------|-----|
-| API Latency | ~2-5ms | ~20-100ms | Native binary vs Python interpreter |
-| Memory | ~20-50MB | ~300MB+ | No Python runtime overhead |
-| Startup | ~50ms | ~2-5s | No model loading delay |
+| p50 Latency | ~1-3ms | ~15-50ms | Native binary vs Python |
+| p99 Latency | ~5-10ms | ~50-150ms | No GC pauses |
+| Requests/sec | ~300-500 | ~20-50 | Lower overhead |
 
-Actual results vary by hardware.
+Actual results vary by hardware and payload.

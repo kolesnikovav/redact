@@ -1,38 +1,48 @@
 #!/usr/bin/env bash
 #
-# Benchmark Redact vs Microsoft Presidio (REST API comparison)
+# Benchmark Redact vs Microsoft Presidio using Oha
 #
-# This is the fairest comparison - both tools running as HTTP services
-# with identical inputs and measuring end-to-end latency.
+# Uses Oha (https://github.com/hatoo/oha) for objective HTTP benchmarking
+# with proper statistical analysis and histograms.
 #
 # Requirements:
+#   - oha (cargo install oha)
 #   - Docker (for Presidio)
 #   - Rust toolchain (for Redact)
-#   - curl, jq, bc
+#   - jq
 #
 # Usage:
 #   ./scripts/benchmark-comparison.sh
-#   ./scripts/benchmark-comparison.sh --iterations 100
+#   ./scripts/benchmark-comparison.sh --requests 500
+#   ./scripts/benchmark-comparison.sh --duration 30s
 #
 
 set -euo pipefail
 
-ITERATIONS="${1:-50}"
+# Defaults
+REQUESTS=200
+CONCURRENCY=1
 PRESIDIO_PORT=5001
 REDACT_PORT=8080
 RESULTS_DIR="docs/benchmarks"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
-# Test texts - representative PII samples
-TEXTS=(
-    "Contact john.doe@example.com or call (555) 123-4567."
-    "SSN: 123-45-6789, Card: 4532-1234-5678-9010."
-    "Patient MRN-12345678, DOB 1990-05-15, NYC 10001."
-)
+# Parse args
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -n|--requests) REQUESTS="$2"; shift 2 ;;
+        -c|--concurrency) CONCURRENCY="$2"; shift 2 ;;
+        *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+done
+
+# Test payload
+TEST_TEXT="Contact john.doe@example.com or call (555) 123-4567. SSN: 123-45-6789."
+PAYLOAD=$(jq -n --arg t "$TEST_TEXT" '{"text":$t,"language":"en"}')
 
 info() { echo "[*] $1"; }
 ok() { echo "[✓] $1"; }
-err() { echo "[!] $1" >&2; }
+err() { echo "[!] $1" >&2; exit 1; }
 
 cleanup() {
     pkill -f "redact-api" 2>/dev/null || true
@@ -40,100 +50,127 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Build Redact
-info "Building Redact..."
-cargo build --release --bin redact-api 2>/dev/null
-ok "Redact built"
+# Check dependencies
+command -v oha >/dev/null || err "oha not found. Install: cargo install oha"
+command -v docker >/dev/null || err "docker not found"
+command -v jq >/dev/null || err "jq not found"
 
-# Start Presidio
+# Build Redact
+info "Building Redact (release)..."
+cargo build --release --bin redact-api 2>/dev/null
+ok "Built"
+
+# Start services
 info "Starting Presidio (Docker)..."
 docker rm -f presidio-bench 2>/dev/null || true
 docker run -d --name presidio-bench -p ${PRESIDIO_PORT}:3000 \
     mcr.microsoft.com/presidio-analyzer:latest >/dev/null
 
-# Start Redact
 info "Starting Redact..."
 ./target/release/redact-api &
-REDACT_PID=$!
 
 # Wait for services
 info "Waiting for services..."
 for i in {1..30}; do
-    presidio_up=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${PRESIDIO_PORT}/health" 2>/dev/null || echo "000")
-    redact_up=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${REDACT_PORT}/health" 2>/dev/null || echo "000")
-    [[ "$presidio_up" == "200" && "$redact_up" == "200" ]] && break
+    p=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${PRESIDIO_PORT}/health" 2>/dev/null || echo "0")
+    r=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${REDACT_PORT}/health" 2>/dev/null || echo "0")
+    [[ "$p" == "200" && "$r" == "200" ]] && break
     sleep 1
 done
 ok "Services ready"
 
-# Benchmark function
-bench() {
-    local url="$1"
-    local payload="$2"
-    local total=0
-    
-    for ((i=0; i<ITERATIONS; i++)); do
-        ms=$(curl -s -o /dev/null -w "%{time_total}" -X POST "$url" \
-            -H "Content-Type: application/json" -d "$payload" 2>/dev/null)
-        total=$(echo "$total + $ms * 1000" | bc)
-    done
-    
-    echo "scale=1; $total / $ITERATIONS" | bc
-}
-
-# Run benchmarks
-echo ""
-echo "========================================"
-echo "  REST API Benchmark ($ITERATIONS iterations)"
-echo "========================================"
-echo ""
-
 mkdir -p "$RESULTS_DIR"
-RESULTS_FILE="${RESULTS_DIR}/results-${TIMESTAMP}.md"
 
-cat > "$RESULTS_FILE" << EOF
+echo ""
+echo "========================================"
+echo "  HTTP Benchmark (oha)"
+echo "  Requests: $REQUESTS | Concurrency: $CONCURRENCY"
+echo "========================================"
+echo ""
+
+# Benchmark Redact
+info "Benchmarking Redact..."
+echo ""
+oha -n "$REQUESTS" -c "$CONCURRENCY" \
+    -m POST \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" \
+    "http://localhost:${REDACT_PORT}/api/v1/analyze" \
+    --json > "${RESULTS_DIR}/redact-${TIMESTAMP}.json"
+
+oha -n "$REQUESTS" -c "$CONCURRENCY" \
+    -m POST \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" \
+    "http://localhost:${REDACT_PORT}/api/v1/analyze"
+
+echo ""
+
+# Benchmark Presidio
+info "Benchmarking Presidio..."
+echo ""
+oha -n "$REQUESTS" -c "$CONCURRENCY" \
+    -m POST \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" \
+    "http://localhost:${PRESIDIO_PORT}/analyze" \
+    --json > "${RESULTS_DIR}/presidio-${TIMESTAMP}.json"
+
+oha -n "$REQUESTS" -c "$CONCURRENCY" \
+    -m POST \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" \
+    "http://localhost:${PRESIDIO_PORT}/analyze"
+
+# Generate comparison report
+REDACT_P50=$(jq -r '.latencyPercentiles.p50' "${RESULTS_DIR}/redact-${TIMESTAMP}.json")
+REDACT_P99=$(jq -r '.latencyPercentiles.p99' "${RESULTS_DIR}/redact-${TIMESTAMP}.json")
+REDACT_RPS=$(jq -r '.summary.requestsPerSec' "${RESULTS_DIR}/redact-${TIMESTAMP}.json")
+
+PRESIDIO_P50=$(jq -r '.latencyPercentiles.p50' "${RESULTS_DIR}/presidio-${TIMESTAMP}.json")
+PRESIDIO_P99=$(jq -r '.latencyPercentiles.p99' "${RESULTS_DIR}/presidio-${TIMESTAMP}.json")
+PRESIDIO_RPS=$(jq -r '.summary.requestsPerSec' "${RESULTS_DIR}/presidio-${TIMESTAMP}.json")
+
+cat > "${RESULTS_DIR}/results-${TIMESTAMP}.md" << EOF
 # Benchmark Results
 
 **Date:** $(date +%Y-%m-%d)  
-**Iterations:** $ITERATIONS  
+**Tool:** [oha](https://github.com/hatoo/oha)  
+**Requests:** $REQUESTS | **Concurrency:** $CONCURRENCY  
 **Platform:** $(uname -s) $(uname -m)
 
-## REST API Latency (ms)
+## Summary
 
-| Test | Redact | Presidio | Speedup |
-|------|--------|----------|---------|
-EOF
+| Metric | Redact | Presidio | Speedup |
+|--------|--------|----------|---------|
+| p50 Latency | ${REDACT_P50}s | ${PRESIDIO_P50}s | $(echo "scale=1; $PRESIDIO_P50 / $REDACT_P50" | bc 2>/dev/null || echo "-")x |
+| p99 Latency | ${REDACT_P99}s | ${PRESIDIO_P99}s | $(echo "scale=1; $PRESIDIO_P99 / $REDACT_P99" | bc 2>/dev/null || echo "-")x |
+| Requests/sec | ${REDACT_RPS} | ${PRESIDIO_RPS} | $(echo "scale=1; $REDACT_RPS / $PRESIDIO_RPS" | bc 2>/dev/null || echo "-")x |
 
-test_num=1
-for text in "${TEXTS[@]}"; do
-    redact_payload=$(jq -n --arg t "$text" '{"text":$t,"language":"en"}')
-    presidio_payload=$(jq -n --arg t "$text" '{"text":$t,"language":"en"}')
-    
-    redact_ms=$(bench "http://localhost:${REDACT_PORT}/api/v1/analyze" "$redact_payload")
-    presidio_ms=$(bench "http://localhost:${PRESIDIO_PORT}/analyze" "$presidio_payload")
-    
-    speedup=$(echo "scale=1; $presidio_ms / $redact_ms" | bc 2>/dev/null || echo "-")
-    
-    printf "Test %d: Redact=%.1fms  Presidio=%.1fms  (%.1fx faster)\n" \
-        "$test_num" "$redact_ms" "$presidio_ms" "$speedup"
-    
-    echo "| $test_num | $redact_ms | $presidio_ms | ${speedup}x |" >> "$RESULTS_FILE"
-    ((test_num++))
-done
+## Test Payload
 
-cat >> "$RESULTS_FILE" << 'EOF'
+\`\`\`json
+$PAYLOAD
+\`\`\`
 
-## Test Cases
+## Raw Data
 
-1. Email + phone number
-2. SSN + credit card
-3. Healthcare PII (MRN, DOB, ZIP)
+- [redact-${TIMESTAMP}.json](redact-${TIMESTAMP}.json)
+- [presidio-${TIMESTAMP}.json](presidio-${TIMESTAMP}.json)
 
-## Methodology
+## Reproduce
 
-Both services run locally - Presidio in Docker, Redact as native binary.
-Measurements are end-to-end HTTP latency (includes serialization overhead).
+\`\`\`bash
+./scripts/benchmark-comparison.sh --requests $REQUESTS --concurrency $CONCURRENCY
+\`\`\`
 EOF
 
 echo ""
-ok "Results saved to $RESULTS_FILE"
+echo "========================================"
+echo "  Summary"
+echo "========================================"
+echo ""
+echo "Redact:   p50=${REDACT_P50}s  p99=${REDACT_P99}s  rps=${REDACT_RPS}"
+echo "Presidio: p50=${PRESIDIO_P50}s  p99=${PRESIDIO_P99}s  rps=${PRESIDIO_RPS}"
+echo ""
+ok "Results saved to ${RESULTS_DIR}/results-${TIMESTAMP}.md"
