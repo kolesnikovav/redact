@@ -1,0 +1,22 @@
+[package]
+name = "redact-wasm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "WASM bindings for browser and mobile"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+redact-core = { path = "../redact-core" }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+js-sys = { workspace = true }
+web-sys = { workspace = true, features = ["console"] }

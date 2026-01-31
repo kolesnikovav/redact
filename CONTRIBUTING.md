@@ -1,126 +1,161 @@
-# Contributing to Censgate Redact
+# Contributing to Redact
 
-Thank you for your interest in contributing to Censgate Redact! This document provides guidelines for contributing to our open-source redaction library and CLI tool.
+Thank you for your interest in contributing to Redact! This document provides guidelines and information for contributors.
+
+## Code of Conduct
+
+This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+
+## How Can I Contribute?
+
+### Reporting Bugs
+
+Before creating bug reports, please check existing issues to avoid duplicates. When creating a bug report, include:
+
+- **Clear title and description**
+- **Steps to reproduce** the issue
+- **Expected behavior** vs. **actual behavior**
+- **Environment details** (OS, Rust version, etc.)
+- **Code samples** or test cases if applicable
+
+### Suggesting Enhancements
+
+Enhancement suggestions are tracked as GitHub issues. When creating an enhancement suggestion, include:
+
+- **Clear title and description**
+- **Use cases** and **examples**
+- **Why this enhancement would be useful** to most users
+- **Possible implementation approach** (optional)
+
+### Pull Requests
+
+1. **Fork the repository** and create your branch from `main`
+2. **Make your changes**, following the code style guidelines
+3. **Add tests** for new functionality
+4. **Run the test suite** to ensure all tests pass
+5. **Update documentation** as needed
+6. **Create a pull request** with a clear title and description
 
 ## Development Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/censgate/redact.git
-   cd redact
-   ```
+### Prerequisites
 
-2. **Install dependencies**
-   ```bash
-   go mod download
-   ```
+- Rust 1.88 or higher
+- Python 3.8+ (for NER model export scripts)
+- Git
 
-3. **Run tests**
-   ```bash
-   go test ./...
-   ```
-
-4. **Run linter**
-   ```bash
-   golangci-lint run
-   ```
-
-5. **Build the CLI tool**
-   ```bash
-   go build -o redactctl ./cmd/redactctl
-   ```
-
-## CLI Tool Overview
-
-The `redactctl` CLI tool provides comprehensive PII/PHI detection and redaction capabilities:
-
-### Available Commands
-
-- **`redactctl redact`** - Redact PII/PHI from text input (files, stdin, or command line)
-- **`redactctl interactive`** - Start an interactive redaction session for testing
-- **`redactctl restore`** - Restore original text from redaction tokens
-- **`redactctl engine`** - Manage and inspect the redaction engine
-  - `engine stats` - View engine statistics
-  - `engine patterns` - List active patterns
-  - `engine cleanup` - Clean up expired tokens
-  - `engine rotate` - Rotate encryption keys
-  - `engine test` - Test custom patterns
-- **`redactctl version`** - Print version information
-
-### Testing CLI Features
+### Getting Started
 
 ```bash
-# Test basic redaction
-./redactctl redact "Contact John Doe at john@example.com or 555-123-4567"
+# Clone your fork
+git clone https://github.com/YOUR_USERNAME/redact.git
+cd redact
 
-# Test interactive mode
-./redactctl interactive
+# Add upstream remote
+git remote add upstream https://github.com/censgate/redact.git
 
-# Test file processing
-echo "SSN: 123-45-6789" | ./redactctl redact --format json
+# Create a feature branch
+git checkout -b feature/my-new-feature
 
-# Test restoration
-./redactctl restore <token>
+# Install development dependencies
+cargo build --workspace
+
+# Run tests
+cargo test --workspace
 ```
 
-## Pull Request Process
-
-1. **Fork the repository** and create a feature branch
-2. **Make your changes** following the code style guidelines
-3. **Add tests** for new functionality
-4. **Update documentation** if needed
-5. **Ensure all tests pass** and linting passes
-6. **Submit a pull request** with a clear description
-
-## Code Style
-
-- **Follow Go conventions** and idiomatic Go patterns
-- **Use meaningful variable names** that clearly express intent
-- **Add comments for public APIs** and complex logic
-- **Keep functions small and focused** (single responsibility)
-- **Use conventional commits** for commit messages (see below)
-- **Follow the project's architecture patterns** for redaction providers and engines
-
-## Testing Guidelines
-
-- **Write unit tests** for all new functionality
-- **Test CLI commands** with various input scenarios
-- **Test error conditions** and edge cases
-- **Ensure backward compatibility** when modifying APIs
-- **Test with different output formats** (text, JSON, YAML)
-
-## Version Management
-
-The project uses automated version management:
-
-- **Version updates** are handled by `scripts/update-version.sh`
-- **Semantic versioning** is enforced (MAJOR.MINOR.PATCH)
-- **Release process** includes automated version updates across the codebase
-- **Changelog entries** are automatically generated
-
-### Manual Version Updates
+### Running Tests
 
 ```bash
-# Update to a new version
-./scripts/update-version.sh v0.4.0
+# Run all tests
+cargo test --workspace
 
-# Dry run to see what would change
-./scripts/update-version.sh v0.4.0 --dry-run
+# Run tests with output
+cargo test --workspace -- --nocapture
+
+# Run specific package tests
+cargo test --package redact-core
+
+# Run specific test suite
+cargo test --package redact-core --test pattern_coverage
+
+# Run benchmarks
+cargo bench --package redact-core
+
+# Run NER E2E tests (requires ONNX model)
+cargo test --package redact-ner --test ner_e2e -- --ignored
 ```
 
-## Commit Message Format
+### Code Quality
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification:
+```bash
+# Format code
+cargo fmt --all
+
+# Run clippy
+cargo clippy --all-targets --all-features -- -D warnings
+
+# Check for security vulnerabilities
+cargo audit
+
+# Build documentation
+cargo doc --no-deps --open
+```
+
+## Code Style Guidelines
+
+### Rust Code
+
+- Follow the official [Rust Style Guide](https://doc.rust-lang.org/1.0.0/style/)
+- Use `cargo fmt` to format code
+- Use `cargo clippy` to catch common mistakes
+- Write idiomatic Rust code
+- Add doc comments (`///`) for public APIs
+- Keep functions focused and small
+
+### Naming Conventions
+
+- **Types**: `PascalCase` (e.g., `AnalyzerEngine`, `EntityType`)
+- **Functions/Methods**: `snake_case` (e.g., `analyze_text`, `get_entities`)
+- **Constants**: `SCREAMING_SNAKE_CASE` (e.g., `MAX_SEQUENCE_LENGTH`)
+- **Modules**: `snake_case` (e.g., `anonymizers`, `recognizers`)
+
+### Documentation
+
+- Add doc comments for all public APIs
+- Include examples in doc comments where helpful
+- Update README.md for user-facing changes
+- Update CHANGELOG.md (see below)
+
+### Testing
+
+- Write unit tests for new functions
+- Write integration tests for new features
+- Aim for high test coverage (target: >75%)
+- Test edge cases and error conditions
+- Use descriptive test names
+
+```rust
+#[test]
+fn test_email_detection_with_special_characters() {
+    // Test implementation
+}
+```
+
+## Commit Messages
+
+Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
 ```
-<type>[optional scope]: <description>
+<type>(<scope>): <subject>
 
-[optional body]
+<body>
 
-[optional footer(s)]
+<footer>
 ```
 
-**Types:**
+### Types
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -128,51 +163,105 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) sp
 - `refactor`: Code refactoring
 - `test`: Adding or updating tests
 - `chore`: Maintenance tasks
+- `perf`: Performance improvements
 
-**Examples:**
+### Examples
+
 ```
-feat(cli): add interactive mode for testing redaction
-fix(engine): resolve memory leak in token cleanup
-docs: update CONTRIBUTING.md with CLI information
+feat(ner): add support for multilingual NER models
+
+Implement label mapping configuration for custom NER models
+with multilingual support. Add tests for Spanish and French.
+
+Closes #123
 ```
 
-## Architecture Guidelines
+```
+fix(anonymizer): correct hash anonymization for empty strings
 
-- **Use Cobra** for all CLI commands
-- **Use Viper** for configuration management following 12-factor principles
-- **Follow the redaction provider pattern** for extensibility
-- **Implement proper error handling** with detailed error messages
-- **Use context.Context** for cancellation and timeouts
-- **Ensure thread safety** for concurrent operations
+The hash anonymizer was panicking on empty input strings.
+Add null check and return empty string for empty input.
+```
 
-## Reporting Issues
+## Versioning
 
-Please use GitHub Issues to report bugs or request features. Include:
+This project follows [Semantic Versioning](https://semver.org/):
 
-- **Clear description** of the issue or feature request
-- **Steps to reproduce** (for bugs)
-- **Expected vs actual behavior**
-- **Environment details** (OS, Go version, etc.)
-- **CLI command examples** if applicable
+- **MAJOR** version for incompatible API changes
+- **MINOR** version for new functionality (backward-compatible)
+- **PATCH** version for bug fixes (backward-compatible)
 
-## Documentation
+## Release Process
 
-- **API documentation** should be added for public interfaces
-- **CLI help text** should be comprehensive and include examples
-- **README updates** may be needed for new features
-- **Architecture diagrams** should use Mermaid format in `docs/` directory
+1. Update version in `Cargo.toml` (workspace and relevant crates)
+2. Update `CHANGELOG.md` with release notes
+3. Create a git tag: `git tag -a v1.2.3 -m "Release v1.2.3"`
+4. Push tag: `git push origin v1.2.3`
+5. GitHub Actions will automatically:
+   - Run CI tests
+   - Build binaries for all platforms
+   - Publish crates to crates.io
+   - Create GitHub release
+   - Build and push Docker image
 
-## Security Considerations
+## Project Structure
 
-- **Never commit sensitive data** or API keys
-- **Use secure defaults** for encryption and tokenization
-- **Follow security best practices** for cryptographic operations
-- **Test security features** thoroughly
-- **Report security vulnerabilities** privately via security@censgate.com
+```
+redact/
+├── crates/
+│   ├── redact-core/         # Core detection & anonymization
+│   ├── redact-ner/          # NER with ONNX Runtime
+│   ├── redact-api/          # REST API server
+│   ├── redact-cli/          # CLI tool
+│   └── redact-wasm/         # WASM bindings
+├── scripts/                 # Utility scripts
+├── examples/                # Usage examples
+├── docs/                    # Documentation
+└── .github/workflows/       # CI/CD pipelines
+```
+
+## Areas for Contribution
+
+### High Priority
+
+- [ ] Additional entity type patterns
+- [ ] Performance optimizations
+- [ ] Documentation improvements
+- [ ] Example applications
+- [ ] Test coverage improvements
+
+### Medium Priority
+
+- [ ] WASM implementation completion
+- [ ] Mobile FFI bindings
+- [ ] Additional anonymization strategies
+- [ ] Multi-language pattern support
+- [ ] Streaming API for large texts
+
+### Low Priority
+
+- [ ] GPU acceleration for NER
+- [ ] Custom recognizer plugin system
+- [ ] Advanced analytics and reporting
+- [ ] Integration with other tools
 
 ## Getting Help
 
-- **GitHub Discussions** for questions and community support
-- **GitHub Issues** for bug reports and feature requests
-- **Documentation** in the `docs/` directory
-- **CLI help** via `redactctl --help` or `redactctl <command> --help`
+- **GitHub Issues**: For bugs and feature requests
+- **GitHub Discussions**: For questions and general discussion
+- **Email**: support@censgate.com for private inquiries
+
+## Recognition
+
+Contributors will be recognized in:
+- `CONTRIBUTORS.md` file
+- GitHub contributors page
+- Release notes for significant contributions
+
+## License
+
+By contributing to Redact, you agree that your contributions will be licensed under the Apache 2.0 License.
+
+---
+
+Thank you for contributing to Redact! 🎉

@@ -1,0 +1,28 @@
+[package]
+name = "redact-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "CLI tool for PII detection and anonymization"
+
+[dependencies]
+redact-core = { path = "../redact-core" }
+redact-ner = { path = "../redact-ner" }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+
+[[bin]]
+name = "redact"
+path = "src/main.rs"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.0"
+tempfile = "3.8"

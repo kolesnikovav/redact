@@ -1,0 +1,107 @@
+[workspace]
+members = [
+    "crates/redact-core",
+    "crates/redact-ner",
+    "crates/redact-api",
+    "crates/redact-wasm",
+    "crates/redact-cli",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+authors = ["Censgate <support@censgate.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/censgate/redact"
+homepage = "https://github.com/censgate/redact"
+keywords = ["pii", "redaction", "privacy", "gdpr", "hipaa"]
+categories = ["text-processing", "web-programming", "wasm"]
+
+[workspace.dependencies]
+# Core dependencies
+regex = "1.10"
+lazy_static = "1.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Web framework
+axum = { version = "0.7", features = ["json", "tracing"] }
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.5", features = ["trace", "cors"] }
+
+# ONNX Runtime
+ort = { version = "2.0.0-rc.11", features = ["load-dynamic", "half"] }
+ndarray = "0.15"
+tokenizers = "0.19"
+
+# WASM support
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = "0.3"
+
+# Cryptography
+sha2 = "0.10"
+blake3 = "1.5"
+aes-gcm = "0.10"
+pbkdf2 = { version = "0.12", features = ["simple"] }
+rand = "0.8"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID generation
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env"] }
+
+# Testing
+criterion = "0.5"
+
+# HTTP client (for examples)
+reqwest = { version = "0.12", features = ["json"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 0
+
+[profile.bench]
+inherits = "release"
+
+# Package for running examples
+[package]
+name = "redact-examples"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+redact-core = { path = "crates/redact-core" }
+redact-api = { path = "crates/redact-api" }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+
+[[example]]
+name = "basic_usage"
+path = "examples/basic_usage.rs"
+
+[[example]]
+name = "api_client"
+path = "examples/api_client.rs"
