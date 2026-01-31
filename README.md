@@ -43,6 +43,24 @@ cargo install redact-cli
 redact --version
 \`\`\`
 
+**Managing Rust Version (Development)**
+
+This project uses Rust **1.93.0**. We recommend using [Mise](https://mise.jdx.dev/) for version management, though [ASDF](https://asdf-vm.com/) is also supported via the `.tool-versions` file:
+
+\`\`\`bash
+# Using Mise (recommended)
+mise install rust@1.93.0
+
+# Using ASDF (also supported)
+asdf install rust 1.93.0
+
+# Or use rustup directly
+rustup install 1.93.0
+rustup default 1.93.0
+\`\`\`
+
+The `.tool-versions` file is maintained for compatibility with both Mise and ASDF.
+
 **From Source**
 
 \`\`\`bash
