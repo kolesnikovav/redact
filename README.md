@@ -500,7 +500,7 @@ git push origin feature/my-new-feature
 
 Censgate Redact is licensed under the [Business Source License 1.1 (BUSL-1.1)](LICENSE).
 
-**Additional Use Grant:** You may use Censgate Redact in production to process up to 50,000 redacted records per month per legal entity, free of charge. Beyond this threshold, a commercial license is required. Contact support@censgate.com for commercial licensing.
+**Additional Use Grant:** You may use Censgate Redact in production to process up to 100,000 redacted records per month per legal entity, free of charge. Beyond this threshold, a commercial license is required. Contact support@censgate.com for commercial licensing.
 
 **Change Date:** On 1 March 2030 (or four years after each version's release, whichever comes first), each version of Censgate Redact automatically converts to the GNU General Public License v3.0 or later.
 
