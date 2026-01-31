@@ -65,10 +65,13 @@ Benchmarks include:
 
 ## Expected Performance
 
-| Metric | Redact | Presidio | Why |
-|--------|--------|----------|-----|
-| p50 Latency | ~1-3ms | ~15-50ms | Native binary vs Python |
-| p99 Latency | ~5-10ms | ~50-150ms | No GC pauses |
-| Requests/sec | ~300-500 | ~20-50 | Lower overhead |
+| Metric | Redact (Rust) | Presidio (Python) | Speedup |
+|--------|---------------|-------------------|---------|
+| p50 Latency | 0.21 ms | 6.90 ms | **33x** |
+| p99 Latency | 1.05 ms | 21.46 ms | **20x** |
+| Avg Latency | 0.25 ms | 7.47 ms | **30x** |
+| Requests/sec | 3,926 | 134 | **29x** |
 
-Actual results vary by hardware and payload.
+**Environment:** Darwin arm64, Docker containers, 500 requests
+
+Results vary by hardware. Run `./scripts/benchmark-comparison.sh` to benchmark on your system.

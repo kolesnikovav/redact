@@ -2,19 +2,18 @@
 #
 # Benchmark Redact vs Microsoft Presidio using Oha
 #
-# Uses Oha (https://github.com/hatoo/oha) for objective HTTP benchmarking
-# with proper statistical analysis and histograms.
+# Both services run in Docker for consistent, reproducible results.
+# Uses Oha (https://github.com/hatoo/oha) for objective HTTP benchmarking.
 #
 # Requirements:
+#   - Docker
 #   - oha (cargo install oha)
-#   - Docker (for Presidio)
-#   - Rust toolchain (for Redact)
 #   - jq
 #
 # Usage:
 #   ./scripts/benchmark-comparison.sh
 #   ./scripts/benchmark-comparison.sh --requests 500
-#   ./scripts/benchmark-comparison.sh --duration 30s
+#   ./scripts/benchmark-comparison.sh --concurrency 4
 #
 
 set -euo pipefail
@@ -22,8 +21,8 @@ set -euo pipefail
 # Defaults
 REQUESTS=200
 CONCURRENCY=1
-PRESIDIO_PORT=5001
-REDACT_PORT=8080
+PRESIDIO_PORT=5011
+REDACT_PORT=8081
 RESULTS_DIR="docs/benchmarks"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
@@ -32,11 +31,17 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         -n|--requests) REQUESTS="$2"; shift 2 ;;
         -c|--concurrency) CONCURRENCY="$2"; shift 2 ;;
+        -h|--help)
+            echo "Usage: $0 [--requests N] [--concurrency N]"
+            echo "  --requests N     Number of requests per benchmark (default: 200)"
+            echo "  --concurrency N  Concurrent connections (default: 1)"
+            exit 0
+            ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
 
-# Test payload
+# Test payload - representative PII sample
 TEST_TEXT="Contact john.doe@example.com or call (555) 123-4567. SSN: 123-45-6789."
 PAYLOAD=$(jq -n --arg t "$TEST_TEXT" '{"text":$t,"language":"en"}')
 
@@ -45,8 +50,8 @@ ok() { echo "[✓] $1"; }
 err() { echo "[!] $1" >&2; exit 1; }
 
 cleanup() {
-    pkill -f "redact-api" 2>/dev/null || true
-    docker rm -f presidio-bench 2>/dev/null || true
+    info "Cleaning up..."
+    docker rm -f redact-bench presidio-bench 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -55,108 +60,157 @@ command -v oha >/dev/null || err "oha not found. Install: cargo install oha"
 command -v docker >/dev/null || err "docker not found"
 command -v jq >/dev/null || err "jq not found"
 
-# Build Redact
-info "Building Redact (release)..."
-cargo build --release --bin redact-api 2>/dev/null
-ok "Built"
+echo ""
+echo "========================================"
+echo "  Redact vs Presidio Benchmark"
+echo "========================================"
+echo ""
 
-# Start services
+# Build Redact Docker image
+info "Building Redact Docker image..."
+docker build -t redact:bench -f Dockerfile . 2>&1 | tail -5
+ok "Redact image built"
+
+# Start Presidio
 info "Starting Presidio (Docker)..."
 docker rm -f presidio-bench 2>/dev/null || true
 docker run -d --name presidio-bench -p ${PRESIDIO_PORT}:3000 \
     mcr.microsoft.com/presidio-analyzer:latest >/dev/null
+ok "Presidio container started"
 
-info "Starting Redact..."
-./target/release/redact-api &
+# Start Redact
+info "Starting Redact (Docker)..."
+docker rm -f redact-bench 2>/dev/null || true
+docker run -d --name redact-bench -p ${REDACT_PORT}:8080 \
+    redact:bench >/dev/null
+ok "Redact container started"
 
 # Wait for services
-info "Waiting for services..."
-for i in {1..30}; do
+info "Waiting for services to be ready..."
+for i in {1..60}; do
     p=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${PRESIDIO_PORT}/health" 2>/dev/null || echo "0")
     r=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${REDACT_PORT}/health" 2>/dev/null || echo "0")
-    [[ "$p" == "200" && "$r" == "200" ]] && break
+    if [[ "$p" == "200" && "$r" == "200" ]]; then
+        ok "Both services ready"
+        break
+    fi
+    if [[ $i -eq 60 ]]; then
+        err "Services failed to start within 60 seconds"
+    fi
     sleep 1
 done
-ok "Services ready"
+
+# Warm up
+info "Warming up services..."
+for i in {1..10}; do
+    curl -s -X POST "http://localhost:${REDACT_PORT}/api/v1/analyze" \
+        -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
+    curl -s -X POST "http://localhost:${PRESIDIO_PORT}/analyze" \
+        -H "Content-Type: application/json" -d "$PAYLOAD" >/dev/null
+done
+ok "Warmup complete"
 
 mkdir -p "$RESULTS_DIR"
 
 echo ""
 echo "========================================"
-echo "  HTTP Benchmark (oha)"
+echo "  Running Benchmarks"
 echo "  Requests: $REQUESTS | Concurrency: $CONCURRENCY"
 echo "========================================"
-echo ""
 
 # Benchmark Redact
+echo ""
 info "Benchmarking Redact..."
 echo ""
 oha -n "$REQUESTS" -c "$CONCURRENCY" \
-    -m POST \
+    --method POST \
     -H "Content-Type: application/json" \
     -d "$PAYLOAD" \
     "http://localhost:${REDACT_PORT}/api/v1/analyze" \
-    --json > "${RESULTS_DIR}/redact-${TIMESTAMP}.json"
-
-oha -n "$REQUESTS" -c "$CONCURRENCY" \
-    -m POST \
-    -H "Content-Type: application/json" \
-    -d "$PAYLOAD" \
-    "http://localhost:${REDACT_PORT}/api/v1/analyze"
-
-echo ""
+    | tee "${RESULTS_DIR}/redact-${TIMESTAMP}.txt"
 
 # Benchmark Presidio
+echo ""
 info "Benchmarking Presidio..."
 echo ""
 oha -n "$REQUESTS" -c "$CONCURRENCY" \
-    -m POST \
+    --method POST \
     -H "Content-Type: application/json" \
     -d "$PAYLOAD" \
     "http://localhost:${PRESIDIO_PORT}/analyze" \
-    --json > "${RESULTS_DIR}/presidio-${TIMESTAMP}.json"
+    | tee "${RESULTS_DIR}/presidio-${TIMESTAMP}.txt"
 
-oha -n "$REQUESTS" -c "$CONCURRENCY" \
-    -m POST \
-    -H "Content-Type: application/json" \
-    -d "$PAYLOAD" \
-    "http://localhost:${PRESIDIO_PORT}/analyze"
+# Extract metrics from text output
+extract_metric() {
+    local file="$1"
+    local pattern="$2"
+    grep -E "$pattern" "$file" | head -1 | awk '{print $NF}'
+}
 
-# Generate comparison report
-REDACT_P50=$(jq -r '.latencyPercentiles.p50' "${RESULTS_DIR}/redact-${TIMESTAMP}.json")
-REDACT_P99=$(jq -r '.latencyPercentiles.p99' "${RESULTS_DIR}/redact-${TIMESTAMP}.json")
-REDACT_RPS=$(jq -r '.summary.requestsPerSec' "${RESULTS_DIR}/redact-${TIMESTAMP}.json")
+extract_percentile() {
+    local file="$1"
+    local pct="$2"
+    grep -E "^\s+${pct}% in" "$file" | awk '{print $3}'
+}
 
-PRESIDIO_P50=$(jq -r '.latencyPercentiles.p50' "${RESULTS_DIR}/presidio-${TIMESTAMP}.json")
-PRESIDIO_P99=$(jq -r '.latencyPercentiles.p99' "${RESULTS_DIR}/presidio-${TIMESTAMP}.json")
-PRESIDIO_RPS=$(jq -r '.summary.requestsPerSec' "${RESULTS_DIR}/presidio-${TIMESTAMP}.json")
+REDACT_P50=$(extract_percentile "${RESULTS_DIR}/redact-${TIMESTAMP}.txt" "50.00")
+REDACT_P99=$(extract_percentile "${RESULTS_DIR}/redact-${TIMESTAMP}.txt" "99.00")
+REDACT_RPS=$(grep "Requests/sec" "${RESULTS_DIR}/redact-${TIMESTAMP}.txt" | awk '{print $2}')
+REDACT_AVG=$(grep "Average:" "${RESULTS_DIR}/redact-${TIMESTAMP}.txt" | awk '{print $2}')
 
+PRESIDIO_P50=$(extract_percentile "${RESULTS_DIR}/presidio-${TIMESTAMP}.txt" "50.00")
+PRESIDIO_P99=$(extract_percentile "${RESULTS_DIR}/presidio-${TIMESTAMP}.txt" "99.00")
+PRESIDIO_RPS=$(grep "Requests/sec" "${RESULTS_DIR}/presidio-${TIMESTAMP}.txt" | awk '{print $2}')
+PRESIDIO_AVG=$(grep "Average:" "${RESULTS_DIR}/presidio-${TIMESTAMP}.txt" | awk '{print $2}')
+
+# Calculate speedups (strip 'ms' suffix for calculation)
+strip_ms() { echo "$1" | sed 's/ *ms//'; }
+REDACT_P50_NUM=$(strip_ms "$REDACT_P50")
+REDACT_P99_NUM=$(strip_ms "$REDACT_P99")
+PRESIDIO_P50_NUM=$(strip_ms "$PRESIDIO_P50")
+PRESIDIO_P99_NUM=$(strip_ms "$PRESIDIO_P99")
+
+P50_SPEEDUP=$(echo "scale=1; $PRESIDIO_P50_NUM / $REDACT_P50_NUM" | bc 2>/dev/null || echo "-")
+P99_SPEEDUP=$(echo "scale=1; $PRESIDIO_P99_NUM / $REDACT_P99_NUM" | bc 2>/dev/null || echo "-")
+RPS_SPEEDUP=$(echo "scale=1; $REDACT_RPS / $PRESIDIO_RPS" | bc 2>/dev/null || echo "-")
+
+# Generate markdown report
 cat > "${RESULTS_DIR}/results-${TIMESTAMP}.md" << EOF
 # Benchmark Results
 
 **Date:** $(date +%Y-%m-%d)  
 **Tool:** [oha](https://github.com/hatoo/oha)  
 **Requests:** $REQUESTS | **Concurrency:** $CONCURRENCY  
-**Platform:** $(uname -s) $(uname -m)
+**Platform:** $(uname -s) $(uname -m)  
+**Environment:** Both services running in Docker containers
 
 ## Summary
 
-| Metric | Redact | Presidio | Speedup |
-|--------|--------|----------|---------|
-| p50 Latency | ${REDACT_P50}s | ${PRESIDIO_P50}s | $(echo "scale=1; $PRESIDIO_P50 / $REDACT_P50" | bc 2>/dev/null || echo "-")x |
-| p99 Latency | ${REDACT_P99}s | ${PRESIDIO_P99}s | $(echo "scale=1; $PRESIDIO_P99 / $REDACT_P99" | bc 2>/dev/null || echo "-")x |
-| Requests/sec | ${REDACT_RPS} | ${PRESIDIO_RPS} | $(echo "scale=1; $REDACT_RPS / $PRESIDIO_RPS" | bc 2>/dev/null || echo "-")x |
+| Metric | Redact (Rust) | Presidio (Python) | Speedup |
+|--------|---------------|-------------------|---------|
+| p50 Latency | ${REDACT_P50} ms | ${PRESIDIO_P50} ms | **${P50_SPEEDUP}x** |
+| p99 Latency | ${REDACT_P99} ms | ${PRESIDIO_P99} ms | **${P99_SPEEDUP}x** |
+| Avg Latency | ${REDACT_AVG} ms | ${PRESIDIO_AVG} ms | - |
+| Requests/sec | ${REDACT_RPS} | ${PRESIDIO_RPS} | **${RPS_SPEEDUP}x** |
 
 ## Test Payload
 
-\`\`\`json
-$PAYLOAD
 \`\`\`
+${TEST_TEXT}
+\`\`\`
+
+Entities detected: EMAIL_ADDRESS, PHONE_NUMBER, US_SSN
+
+## Environment Details
+
+- **Redact:** Docker container (rust:1.93-slim base)
+- **Presidio:** Docker container (mcr.microsoft.com/presidio-analyzer:latest)
+- **Benchmark tool:** oha v$(oha --version 2>/dev/null | head -1 | awk '{print $2}' || echo "unknown")
 
 ## Raw Data
 
-- [redact-${TIMESTAMP}.json](redact-${TIMESTAMP}.json)
-- [presidio-${TIMESTAMP}.json](presidio-${TIMESTAMP}.json)
+- [redact-${TIMESTAMP}.txt](redact-${TIMESTAMP}.txt)
+- [presidio-${TIMESTAMP}.txt](presidio-${TIMESTAMP}.txt)
 
 ## Reproduce
 
@@ -170,7 +224,10 @@ echo "========================================"
 echo "  Summary"
 echo "========================================"
 echo ""
-echo "Redact:   p50=${REDACT_P50}s  p99=${REDACT_P99}s  rps=${REDACT_RPS}"
-echo "Presidio: p50=${PRESIDIO_P50}s  p99=${PRESIDIO_P99}s  rps=${PRESIDIO_RPS}"
+printf "%-20s %-15s %-15s %-10s\n" "Metric" "Redact" "Presidio" "Speedup"
+printf "%-20s %-15s %-15s %-10s\n" "------" "------" "--------" "-------"
+printf "%-20s %-15s %-15s %-10s\n" "p50 Latency" "${REDACT_P50} ms" "${PRESIDIO_P50} ms" "${P50_SPEEDUP}x"
+printf "%-20s %-15s %-15s %-10s\n" "p99 Latency" "${REDACT_P99} ms" "${PRESIDIO_P99} ms" "${P99_SPEEDUP}x"
+printf "%-20s %-15s %-15s %-10s\n" "Requests/sec" "${REDACT_RPS}" "${PRESIDIO_RPS}" "${RPS_SPEEDUP}x"
 echo ""
 ok "Results saved to ${RESULTS_DIR}/results-${TIMESTAMP}.md"

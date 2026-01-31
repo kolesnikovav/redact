@@ -375,34 +375,29 @@ engine.recognizer_registry_mut().add_recognizer(Arc::new(ner));
 
 ## Performance
 
-### Pattern-Based Detection
+### Benchmark Results (2026-01-31)
 
-| Metric | Value |
-|--------|-------|
-| Throughput | ~50,000 entities/second |
-| Latency | ~2ms for 200 words |
-| Memory | ~20MB baseline |
-| Startup | ~50ms |
+Measured using [oha](https://github.com/hatoo/oha) with both services running in Docker containers.
 
-### Comparison with Presidio
+| Metric | Redact (Rust) | Presidio (Python) | Speedup |
+|--------|---------------|-------------------|---------|
+| p50 Latency | 0.21 ms | 6.90 ms | **33x** |
+| p99 Latency | 1.05 ms | 21.46 ms | **20x** |
+| Requests/sec | 3,926 | 134 | **29x** |
 
-| Metric | Redact (Rust) | Presidio (Python) |
-|--------|---------------|-------------------|
-| Inference speed | **10-100x faster** | Baseline |
-| Memory usage | ~50MB | ~300MB |
-| Startup time | ~50ms | ~2-5s |
+Test payload: `Contact john.doe@example.com or call (555) 123-4567. SSN: 123-45-6789.`
 
 ### Run Benchmarks
 
 ```bash
-# REST API comparison vs Presidio (requires Docker)
+# REST API comparison vs Presidio (requires Docker + oha)
 ./scripts/benchmark-comparison.sh
 
 # Criterion micro-benchmarks (Redact internals)
 cargo bench --package redact-core
 ```
 
-See [docs/benchmarks/](docs/benchmarks/) for methodology and results.
+See [docs/benchmarks/](docs/benchmarks/) for methodology and detailed results.
 
 ## Project Structure
 

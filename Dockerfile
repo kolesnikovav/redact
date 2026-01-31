@@ -1,10 +1,12 @@
 # Multi-stage build for optimized Docker image
-FROM rust:1.88-slim as builder
+FROM rust:1.93-slim AS builder
 
-# Install build dependencies
+# Install build dependencies (including C++ for tokenizers/esaxx-rs)
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
+    g++ \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
