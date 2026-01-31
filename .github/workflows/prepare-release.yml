@@ -1,0 +1,119 @@
+name: Prepare Release
+
+# Trigger manually from GitHub UI: Actions → Prepare Release → Run workflow
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.2.0, 1.0.0-beta.1)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run (no commits or tags)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ inputs.version }}"
+          # Remove 'v' prefix if provided
+          VERSION="${VERSION#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "Version must be semantic (e.g., 0.2.0, 1.0.0-beta.1)"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "✅ Version format valid: $VERSION"
+
+      - name: Check version doesn't already exist
+        run: |
+          if git tag -l "v${{ env.VERSION }}" | grep -q .; then
+            echo "❌ Tag v${{ env.VERSION }} already exists"
+            exit 1
+          fi
+          echo "✅ Tag v${{ env.VERSION }} does not exist"
+
+      - name: Update workspace version
+        run: |
+          sed -i "s/^version = \"[^\"]*\"/version = \"${{ env.VERSION }}\"/" Cargo.toml
+          echo "Updated Cargo.toml workspace version"
+
+      - name: Update inter-crate dependency versions
+        run: |
+          for file in crates/redact-ner/Cargo.toml crates/redact-api/Cargo.toml crates/redact-cli/Cargo.toml; do
+            sed -i "s/\(redact-core = { path = \"[^\"]*\", version = \"\)[^\"]*/\1${{ env.VERSION }}/" "$file"
+            sed -i "s/\(redact-ner = { path = \"[^\"]*\", version = \"\)[^\"]*/\1${{ env.VERSION }}/" "$file"
+            echo "Updated $file"
+          done
+
+      - name: Update CHANGELOG.md
+        run: |
+          TODAY=$(date +"%Y-%m-%d")
+          if grep -q "## \[${{ env.VERSION }}\]" CHANGELOG.md; then
+            echo "Version already in CHANGELOG.md, skipping"
+          else
+            sed -i "/^# Changelog/a\\
+\\
+## [${{ env.VERSION }}] - $TODAY\\
+\\
+### Added\\
+\\
+### Changed\\
+\\
+### Fixed\\
+" CHANGELOG.md
+            echo "Added ${{ env.VERSION }} entry to CHANGELOG.md"
+          fi
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify workspace compiles
+        run: cargo check --workspace
+
+      - name: Show changes (dry run)
+        if: inputs.dry_run
+        run: |
+          echo "=== DRY RUN - Changes that would be made ==="
+          git diff
+          echo ""
+          echo "Would create tag: v${{ env.VERSION }}"
+          echo "No commits or tags created."
+
+      - name: Commit and tag
+        if: "!inputs.dry_run"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add -A
+          git commit -m "chore: release v${{ env.VERSION }}"
+          git tag -a "v${{ env.VERSION }}" -m "Release v${{ env.VERSION }}"
+          
+          echo "✅ Created commit and tag v${{ env.VERSION }}"
+
+      - name: Push changes and tag
+        if: "!inputs.dry_run"
+        run: |
+          git push origin ${{ github.ref_name }}
+          git push origin "v${{ env.VERSION }}"
+          echo "✅ Pushed to origin"
+          echo ""
+          echo "🚀 Release workflow will now run automatically"
+          echo "   View at: ${{ github.server_url }}/${{ github.repository }}/actions/workflows/release.yml"
