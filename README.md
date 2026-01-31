@@ -1,4 +1,4 @@
-# Redact - High-Performance PII Detection & Anonymization
+# Redact
 
 <div align="center">
 
@@ -7,189 +7,182 @@
 [![Tests](https://github.com/censgate/redact/workflows/CI/badge.svg)](https://github.com/censgate/redact/actions)
 [![Crates.io](https://img.shields.io/crates/v/redact-core.svg)](https://crates.io/crates/redact-core)
 
-**A production-ready, Rust-based PII detection and anonymization engine designed as a drop-in replacement for Microsoft Presidio.**
+**High-performance PII detection and anonymization engine**
 
-[Features](#-features) •
-[Quick Start](#-quick-start) •
-[Documentation](#-documentation) •
-[Examples](#-examples) •
-[Contributing](#-contributing)
+A production-ready, Rust-based solution designed as a drop-in replacement for Microsoft Presidio.
+
+[Quick Start](#quick-start) · [Documentation](#documentation) · [Examples](#examples) · [Contributing](#contributing)
 
 </div>
 
 ---
 
-## 🌟 Features
+## Features
 
-- **⚡ High Performance**: 10-100x faster than Python-based solutions with sub-millisecond inference
-- **🔒 Memory Safe**: Rust's borrow checker eliminates entire classes of security vulnerabilities
-- **🎯 Production Ready**: 36+ pattern-based entity types + transformer-based NER
-- **🌐 Multi-Platform**: Native server, WebAssembly (WASM), and CLI support
-- **🤖 ML-Powered**: Full ONNX Runtime integration for transformer models (BERT, RoBERTa, DistilBERT)
-- **📦 Lightweight**: ~20-50MB memory footprint vs ~300MB for Presidio
-- **🔧 Extensible**: Plugin architecture for custom recognizers and anonymization strategies
+- **High Performance** — 10-100x faster than Python-based solutions with sub-millisecond inference
+- **Memory Safe** — Rust's borrow checker eliminates entire classes of security vulnerabilities
+- **Production Ready** — 36+ pattern-based entity types plus transformer-based NER
+- **Multi-Platform** — Native server, WebAssembly (WASM), and CLI support
+- **ML-Powered** — Full ONNX Runtime integration for transformer models (BERT, RoBERTa, DistilBERT)
+- **Lightweight** — ~20-50MB memory footprint vs ~300MB for Presidio
+- **Extensible** — Plugin architecture for custom recognizers and anonymization strategies
 
-## 🚀 Quick Start
+## Quick Start
 
-### Installation
+### Install the CLI
 
-**Using Cargo (Recommended)**
-
-\`\`\`bash
-# Install the CLI tool
+```bash
 cargo install redact-cli
-
-# Verify installation
 redact --version
-\`\`\`
+```
 
-**Managing Rust Version (Development)**
+### Analyze Text for PII
 
-This project uses Rust **1.93.0**. We recommend using [Mise](https://mise.jdx.dev/) for version management, though [ASDF](https://asdf-vm.com/) is also supported via the `.tool-versions` file:
-
-\`\`\`bash
-# Using Mise (recommended)
-mise install rust@1.93.0
-
-# Using ASDF (also supported)
-asdf install rust 1.93.0
-
-# Or use rustup directly
-rustup install 1.93.0
-rustup default 1.93.0
-\`\`\`
-
-The `.tool-versions` file is maintained for compatibility with both Mise and ASDF.
-
-**From Source**
-
-\`\`\`bash
-# Clone the repository
-git clone https://github.com/censgate/redact.git
-cd redact
-
-# Build all crates
-cargo build --release
-
-# Run tests
-cargo test --workspace
-\`\`\`
-
-**Using Docker**
-
-\`\`\`bash
-# Pull the image
-docker pull ghcr.io/censgate/redact:latest
-
-# Run the API server
-docker run -p 8080:8080 ghcr.io/censgate/redact:latest
-\`\`\`
-
-### CLI Usage
-
-The \`redact\` CLI provides a simple interface for PII detection and anonymization:
-
-\`\`\`bash
-# Analyze text for PII
+```bash
 redact analyze "Contact John Doe at john@example.com or call (555) 123-4567"
+```
 
-# Output:
-# Detected 3 PII entities:
-#
-#   EmailAddress at 21..37 (score: 0.80): john@example.com
-#   PhoneNumber at 46..60 (score: 0.70): (555) 123-4567
-#
-# Processing time: 2ms
-\`\`\`
+Output:
 
-**Anonymize PII**
+```
+Detected 2 PII entities:
 
-\`\`\`bash
-# Replace strategy (default)
+  EmailAddress at 21..37 (score: 0.80): john@example.com
+  PhoneNumber at 46..60 (score: 0.70): (555) 123-4567
+
+Processing time: 2ms
+```
+
+### Anonymize PII
+
+```bash
+# Replace with placeholders (default)
 redact anonymize "My SSN is 123-45-6789"
 # Output: My SSN is [US_SSN]
 
-# Mask strategy
+# Mask sensitive data
 redact anonymize --strategy mask "Email: john@example.com"
 # Output: Email: jo**@****le.com
 
-# Hash strategy
+# Hash for consistent pseudonymization
 redact anonymize --strategy hash "Card: 4532-1234-5678-9010"
 # Output: Card: [CREDIT_CARD_a1b2c3d4]
-\`\`\`
+```
 
-**Read from file or stdin**
+### Process Files
 
-\`\`\`bash
-# Analyze file
+```bash
+# Analyze a file
 redact analyze -i sensitive_data.txt
 
-# Anonymize from stdin
+# Pipe from stdin
 cat document.txt | redact anonymize --strategy mask
 
-# Output to JSON
+# Output as JSON
 redact analyze --format json "test@example.com" > results.json
-\`\`\`
+```
 
-**Filter by entity types**
+### Filter by Entity Type
 
-\`\`\`bash
-# Detect only emails and SSNs
-redact analyze --entities EmailAddress --entities UsSsn \\
+```bash
+redact analyze --entities EmailAddress --entities UsSsn \
   "Email: test@example.com, SSN: 123-45-6789, Phone: (555) 123-4567"
+# Only detects EmailAddress and UsSsn, ignores PhoneNumber
+```
 
-# Output will only show EmailAddress and UsSsn, not PhoneNumber
-\`\`\`
+## Installation
 
-### Rust Library Usage
+### Using Cargo (Recommended)
 
-Add to your \`Cargo.toml\`:
+```bash
+cargo install redact-cli
+```
 
-\`\`\`toml
+### From Source
+
+```bash
+git clone https://github.com/censgate/redact.git
+cd redact
+cargo build --release
+cargo test --workspace
+```
+
+### Using Docker
+
+Multi-architecture images available for `linux/amd64` and `linux/arm64`:
+
+```bash
+docker pull ghcr.io/censgate/redact:latest
+docker run -p 8080:8080 ghcr.io/censgate/redact:latest
+```
+
+The image uses a minimal [distroless](https://github.com/GoogleContainerTools/distroless) base (~37MB) optimized for ARM64 (AWS Graviton, Apple Silicon) and AMD64.
+
+### Rust Version
+
+This project requires Rust **1.93.0**. Use [Mise](https://mise.jdx.dev/) or [ASDF](https://asdf-vm.com/) for version management:
+
+```bash
+# Using Mise (recommended)
+mise install rust@1.93.0
+
+# Using ASDF
+asdf install rust 1.93.0
+
+# Using rustup
+rustup install 1.93.0
+rustup default 1.93.0
+```
+
+## Library Usage
+
+Add to your `Cargo.toml`:
+
+```toml
 [dependencies]
 redact-core = "0.1"
 redact-ner = "0.1"  # Optional: for ML-based NER
-\`\`\`
+```
 
-**Basic pattern-based detection:**
+### Basic Pattern Detection
 
-\`\`\`rust
-use redact_core::{AnalyzerEngine, anonymizers::{AnonymizerConfig, AnonymizationStrategy}};
+```rust
+use redact_core::{AnalyzerEngine, AnonymizerConfig, AnonymizationStrategy};
 
 fn main() -> anyhow::Result<()> {
-    // Create analyzer with 36+ pattern-based entity types
     let engine = AnalyzerEngine::new();
 
     // Analyze text
-    let text = "Contact John Doe at john@example.com or call (555) 123-4567. SSN: 123-45-6789";
+    let text = "Contact John Doe at john@example.com or call (555) 123-4567";
     let result = engine.analyze(text, None)?;
 
     println!("Found {} PII entities", result.detected_entities.len());
-    for entity in result.detected_entities {
-        println!("  {:?}: {} (score: {:.2})",
+    for entity in &result.detected_entities {
+        println!(
+            "  {:?}: {} (score: {:.2})",
             entity.entity_type,
-            entity.text.unwrap_or_default(),
+            entity.text.as_deref().unwrap_or_default(),
             entity.score
         );
     }
 
-    // Anonymize with replace strategy
+    // Anonymize
     let config = AnonymizerConfig {
         strategy: AnonymizationStrategy::Replace,
         ..Default::default()
     };
-
     let anonymized = engine.anonymize(text, None, &config)?;
-    println!("\\nAnonymized: {}", anonymized.text);
-    // Output: "Contact [PERSON] at [EMAIL_ADDRESS] or call [PHONE_NUMBER]. SSN: [US_SSN]"
+    println!("\nAnonymized: {}", anonymized.text);
 
     Ok(())
 }
-\`\`\`
+```
 
-**With ML-powered NER:**
+### ML-Powered NER
 
-\`\`\`rust
+For detecting contextual entities like person names, organizations, and locations:
+
+```rust
 use redact_core::AnalyzerEngine;
 use redact_ner::{NerRecognizer, NerConfig};
 use std::sync::Arc;
@@ -197,54 +190,54 @@ use std::sync::Arc;
 fn main() -> anyhow::Result<()> {
     // Configure NER with ONNX model
     let ner_config = NerConfig {
-        model_path: "models/bert-base-ner.onnx".to_string(),
-        tokenizer_path: Some("models/tokenizer.json".to_string()),
+        model_path: "models/bert-base-ner/model.onnx".to_string(),
+        tokenizer_path: Some("models/bert-base-ner/tokenizer.json".to_string()),
         min_confidence: 0.7,
         ..Default::default()
     };
 
     let ner = NerRecognizer::from_config(ner_config)?;
 
-    // Create analyzer with both patterns and NER
+    // Add NER to analyzer
     let mut engine = AnalyzerEngine::new();
     engine.recognizer_registry_mut().add_recognizer(Arc::new(ner));
 
-    // Now detects both pattern-based AND contextual entities
+    // Detect both pattern-based and contextual entities
     let text = "John Doe works at Acme Corp. Email: john@acme.com";
     let result = engine.analyze(text, None)?;
 
-    // Detects: PERSON "John Doe", ORGANIZATION "Acme Corp", EMAIL "john@acme.com"
-    for entity in result.detected_entities {
-        println!("{:?}: {}", entity.entity_type, entity.text.unwrap_or_default());
+    for entity in &result.detected_entities {
+        println!("{:?}: {}", entity.entity_type, entity.text.as_deref().unwrap_or_default());
     }
+    // Output: PERSON: John Doe, ORGANIZATION: Acme Corp, EMAIL: john@acme.com
 
     Ok(())
 }
-\`\`\`
+```
 
-### REST API Server
+## REST API
 
-**Start the server:**
+### Start the Server
 
-\`\`\`bash
+```bash
 cargo run --release --bin redact-api
 # Server listening on http://0.0.0.0:8080
-\`\`\`
+```
 
-**Analyze endpoint:**
+### Analyze Endpoint
 
-\`\`\`bash
-curl -X POST http://localhost:8080/api/v1/analyze \\
-  -H "Content-Type: application/json" \\
+```bash
+curl -X POST http://localhost:8080/api/v1/analyze \
+  -H "Content-Type: application/json" \
   -d '{
     "text": "Email john@example.com, SSN 123-45-6789",
     "language": "en"
   }'
-\`\`\`
+```
 
-**Response:**
+Response:
 
-\`\`\`json
+```json
 {
   "results": [
     {
@@ -270,13 +263,13 @@ curl -X POST http://localhost:8080/api/v1/analyze \\
     "language": "en"
   }
 }
-\`\`\`
+```
 
-**Anonymize endpoint:**
+### Anonymize Endpoint
 
-\`\`\`bash
-curl -X POST http://localhost:8080/api/v1/anonymize \\
-  -H "Content-Type: application/json" \\
+```bash
+curl -X POST http://localhost:8080/api/v1/anonymize \
+  -H "Content-Type: application/json" \
   -d '{
     "text": "Contact John at john@example.com",
     "config": {
@@ -286,120 +279,73 @@ curl -X POST http://localhost:8080/api/v1/anonymize \\
       "mask_end_chars": 4
     }
   }'
-\`\`\`
+```
 
-## 🔍 Supported Entity Types
+## Supported Entity Types
 
-### Pattern-Based (36+ types - Production Ready ✅)
+### Pattern-Based (36+ types)
 
-<details>
-<summary><strong>Contact Information</strong></summary>
+| Category | Entity Types |
+|----------|-------------|
+| **Contact** | `EMAIL_ADDRESS`, `PHONE_NUMBER`, `IP_ADDRESS`, `URL`, `DOMAIN_NAME` |
+| **Financial** | `CREDIT_CARD`, `IBAN_CODE`, `US_BANK_NUMBER` |
+| **US** | `US_SSN`, `US_DRIVER_LICENSE`, `US_PASSPORT`, `US_ZIP_CODE` |
+| **UK** | `UK_NHS`, `UK_NINO`, `UK_POSTCODE`, `UK_PHONE_NUMBER`, `UK_MOBILE_NUMBER`, `UK_SORT_CODE`, `UK_DRIVER_LICENSE`, `UK_PASSPORT_NUMBER`, `UK_COMPANY_NUMBER` |
+| **Healthcare** | `MEDICAL_LICENSE`, `MEDICAL_RECORD_NUMBER` |
+| **Crypto** | `BTC_ADDRESS`, `ETH_ADDRESS` |
+| **Technical** | `GUID`, `MAC_ADDRESS`, `MD5_HASH`, `SHA1_HASH`, `SHA256_HASH` |
 
-- \`EMAIL_ADDRESS\` - Email addresses
-- \`PHONE_NUMBER\` - Phone numbers (US/international)
-- \`IP_ADDRESS\` - IPv4 addresses
-- \`URL\` - Web URLs
-- \`DOMAIN_NAME\` - Domain names
-</details>
+### NER-Based (ML-Powered)
 
-<details>
-<summary><strong>Financial</strong></summary>
+| Entity Type | Description |
+|-------------|-------------|
+| `PERSON` | Person names (e.g., "John Doe", "Marie Curie") |
+| `ORGANIZATION` | Organization names (e.g., "Acme Corp", "Microsoft") |
+| `LOCATION` | Location names (e.g., "New York", "London") |
+| `DATE_TIME` | Date/time expressions in context |
 
-- \`CREDIT_CARD\` - Credit card numbers (Visa, MC, Amex, etc.)
-- \`IBAN_CODE\` - International bank account numbers
-- \`US_BANK_NUMBER\` - US bank account numbers
-</details>
+*Requires ONNX model. See [ML-Powered NER](#ml-powered-ner-1) section.*
 
-<details>
-<summary><strong>US-Specific</strong></summary>
-
-- \`US_SSN\` - Social Security Numbers
-- \`US_DRIVER_LICENSE\` - Driver's license numbers
-- \`US_PASSPORT\` - Passport numbers
-- \`US_ZIP_CODE\` - ZIP codes and ZIP+4 format
-</details>
-
-<details>
-<summary><strong>UK-Specific</strong></summary>
-
-- \`UK_NHS\` - NHS numbers
-- \`UK_NINO\` - National Insurance numbers
-- \`UK_POSTCODE\` - Postal codes
-- \`UK_PHONE_NUMBER\` - UK phone numbers
-- \`UK_MOBILE_NUMBER\` - UK mobile numbers
-- \`UK_SORT_CODE\` - Bank sort codes
-- \`UK_DRIVER_LICENSE\` - Driving licenses
-- \`UK_PASSPORT_NUMBER\` - Passport numbers
-- \`UK_COMPANY_NUMBER\` - Company registration numbers
-</details>
-
-<details>
-<summary><strong>Healthcare, Crypto & Technical</strong></summary>
-
-- \`MEDICAL_LICENSE\` - Medical professional licenses
-- \`MEDICAL_RECORD_NUMBER\` - Medical record identifiers
-- \`BTC_ADDRESS\` - Bitcoin addresses
-- \`ETH_ADDRESS\` - Ethereum addresses
-- \`GUID\` - GUIDs/UUIDs
-- \`MAC_ADDRESS\` - MAC addresses
-- \`MD5_HASH\`, \`SHA1_HASH\`, \`SHA256_HASH\` - Cryptographic hashes
-</details>
-
-### NER-Based (ML-Powered, Fully Operational ✅)
-
-- \`PERSON\` - Person names (e.g., "John Doe", "Marie Curie")
-- \`ORGANIZATION\` - Organization names (e.g., "Acme Corp", "Microsoft")
-- \`LOCATION\` - Location names (e.g., "New York", "London")
-- \`DATE_TIME\` - Date/time expressions in context
-
-*Requires ONNX model. See [ML-Powered NER](#-ml-powered-ner) section.*
-
-## 🎨 Anonymization Strategies
+## Anonymization Strategies
 
 | Strategy | Description | Example |
 |----------|-------------|---------|
-| **Replace** | Simple placeholder | \`[EMAIL_ADDRESS]\` |
-| **Mask** | Partial masking | \`jo**@****le.com\` |
-| **Hash** | Irreversible hashing | \`[EMAIL_ADDRESS_a1b2c3d4]\` |
-| **Encrypt** | Reversible encryption | \`<TOKEN_uuid>\` |
+| **Replace** | Simple placeholder | `[EMAIL_ADDRESS]` |
+| **Mask** | Partial masking | `jo**@****le.com` |
+| **Hash** | Irreversible hashing | `[EMAIL_ADDRESS_a1b2c3d4]` |
+| **Encrypt** | Reversible encryption | `<TOKEN_uuid>` |
 
-**Configuration Example:**
-
-\`\`\`rust
+```rust
 use redact_core::anonymizers::{AnonymizerConfig, AnonymizationStrategy};
 
-// Mask strategy with custom characters
 let config = AnonymizerConfig {
     strategy: AnonymizationStrategy::Mask,
     mask_char: '*',
-    mask_start_chars: 2,  // Show first 2 chars
-    mask_end_chars: 4,    // Show last 4 chars
+    mask_start_chars: 2,
+    mask_end_chars: 4,
     ..Default::default()
 };
 // "john@example.com" → "jo**@****le.com"
-\`\`\`
+```
 
-## 🤖 ML-Powered NER
+## ML-Powered NER
 
-Redact includes full ONNX Runtime integration for transformer-based Named Entity Recognition, enabling detection of contextual entities like person names, organizations, and locations.
+Redact includes full ONNX Runtime integration for transformer-based Named Entity Recognition.
 
-### Quick Setup
+### Setup
 
 **1. Export a HuggingFace model to ONNX:**
 
-\`\`\`bash
-# Install dependencies
+```bash
 pip install transformers optimum[exporters]
-
-# Export model
-python scripts/export_ner_model.py \\
-    --model dslim/bert-base-NER \\
+python scripts/export_ner_model.py \
+    --model dslim/bert-base-NER \
     --output models/bert-base-ner
-\`\`\`
+```
 
 **2. Use in your code:**
 
-\`\`\`rust
+```rust
 use redact_ner::{NerRecognizer, NerConfig};
 use redact_core::AnalyzerEngine;
 use std::sync::Arc;
@@ -414,37 +360,52 @@ let config = NerConfig {
 let ner = NerRecognizer::from_config(config)?;
 let mut engine = AnalyzerEngine::new();
 engine.recognizer_registry_mut().add_recognizer(Arc::new(ner));
-\`\`\`
+```
 
 ### Recommended Models
 
-- **\`dslim/bert-base-NER\`** (~420MB) - Excellent accuracy, CoNLL-2003 trained
-- **\`dbmdz/bert-large-cased-finetuned-conll03-english\`** (~1.2GB) - High accuracy
-- **\`Davlan/distilbert-base-multilingual-cased-ner-hrl\`** (~500MB) - Multilingual
+| Model | Size | Use Case |
+|-------|------|----------|
+| `dslim/bert-base-NER` | ~420MB | Best accuracy/size balance |
+| `dbmdz/bert-large-cased-finetuned-conll03-english` | ~1.2GB | Highest accuracy |
+| `Davlan/distilbert-base-multilingual-cased-ner-hrl` | ~500MB | Multilingual support |
 
 ### Performance
 
-- **Inference Speed**: ~2-10ms per text (depending on model size and text length)
-- **Memory**: ~50-200MB (depending on model size)
-- **Startup**: Model loads in ~100-500ms
-- **Thread Safety**: Fully concurrent via mutex-wrapped sessions
+- **Inference**: ~2-10ms per text (depending on model and text length)
+- **Memory**: ~50-200MB (depending on model)
+- **Startup**: ~100-500ms model load time
+- **Concurrency**: Thread-safe via mutex-wrapped sessions
 
-## 📊 Performance
+## Performance
 
-**Pattern-based detection:**
-- Throughput: ~50,000 entities/second
-- Latency: ~2ms for typical text (200 words)
-- Memory: ~20MB baseline
-- Startup: ~50ms
+### Benchmark Results (2026-01-31)
 
-**vs. Presidio (Python):**
-- **10-100x faster** inference
-- **~6x lower** memory usage (~50MB vs ~300MB with NER)
-- **~40x faster** startup (~50ms vs ~2-5s)
+Measured using [oha](https://github.com/hatoo/oha) with both services running in Docker containers.
 
-## 📦 Crate Organization
+| Metric | Redact (Rust) | Presidio (Python) | Speedup |
+|--------|---------------|-------------------|---------|
+| p50 Latency | 0.20 ms | 6.96 ms | **34x** |
+| p99 Latency | 0.96 ms | 22.50 ms | **23x** |
+| Throughput | 16,223 req/s | 171 req/s | **95x** |
 
-\`\`\`
+Test payload: `Contact john.doe@example.com or call (555) 123-4567. SSN: 123-45-6789.`
+
+### Run Benchmarks
+
+```bash
+# REST API comparison vs Presidio (requires Docker + oha)
+./scripts/benchmark-comparison.sh
+
+# Criterion micro-benchmarks (Redact internals)
+cargo bench --package redact-core
+```
+
+See [docs/benchmarks/](docs/benchmarks/) for methodology and detailed results.
+
+## Project Structure
+
+```
 redact/
 ├── crates/
 │   ├── redact-core/     # Core detection & anonymization engine
@@ -452,16 +413,15 @@ redact/
 │   ├── redact-api/      # REST API service (Axum)
 │   ├── redact-cli/      # Command-line tool
 │   └── redact-wasm/     # WebAssembly bindings
-├── scripts/             # Utility scripts (model export, etc.)
+├── patterns/            # PII detection patterns (GDPR, HIPAA, CCPA)
+├── scripts/             # Utility scripts (model export)
 ├── examples/            # Usage examples
 └── docs/                # Documentation
-\`\`\`
+```
 
-## 🧪 Testing
+## Testing
 
-Comprehensive test coverage (~75%) with 194 tests:
-
-\`\`\`bash
+```bash
 # Run all tests
 cargo test --workspace
 
@@ -474,26 +434,24 @@ cargo bench --package redact-core
 # Run NER E2E tests (requires ONNX model)
 cargo test --package redact-ner --test ner_e2e -- --ignored
 
-# Check specific test suites
+# Run specific test suites
 cargo test --package redact-core --test pattern_coverage
 cargo test --package redact-core --test error_scenarios
 cargo test --package redact-core --test concurrent_operations
-cargo test --package redact-cli
-\`\`\`
+```
 
 See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed coverage report.
 
-## 📖 Documentation
+## Documentation
 
-- **[API Documentation](https://docs.rs/redact-core)** - Rust API docs
-- **[Architecture Guide](docs/ARCHITECTURE.md)** - System architecture
-- **[Test Coverage](TEST_COVERAGE.md)** - Testing details
-- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute
-- **[Examples](examples/)** - Code examples
+- [API Documentation](https://docs.rs/redact-core) — Rust API docs
+- [Test Coverage](TEST_COVERAGE.md) — Testing details
+- [Contributing Guide](CONTRIBUTING.md) — How to contribute
+- [Examples](examples/) — Code examples
 
-## 🛣️ Roadmap
+## Roadmap
 
-### ✅ v0.1.0 (Current)
+### v0.1.0 (Current)
 
 - [x] 36+ pattern-based entity types
 - [x] Full ONNX NER integration
@@ -501,30 +459,26 @@ See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed coverage report.
 - [x] REST API service
 - [x] CLI tool
 - [x] Comprehensive test suite (194 tests, ~75% coverage)
-- [x] Performance benchmarks
 
-### 🔄 v0.2.0 (In Progress)
+### v0.2.0 (In Progress)
 
 - [ ] WebAssembly (WASM) browser support
 - [ ] Publish crates to crates.io
 - [ ] Docker images on GitHub Container Registry
-- [ ] Enhanced documentation site
+- [ ] Enhanced documentation
 
-### 🔮 v0.3.0 (Planned)
+### v0.3.0 (Planned)
 
 - [ ] Mobile FFI bindings (Swift/Kotlin)
 - [ ] Streaming API for large texts
 - [ ] GPU acceleration for NER
 - [ ] Multi-language support expansion
-- [ ] Custom recognizer plugin system
 
-## 🤝 Contributing
+## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-**Quick start for contributors:**
-
-\`\`\`bash
+```bash
 # Fork and clone
 git clone https://github.com/YOUR_USERNAME/redact.git
 cd redact
@@ -535,38 +489,46 @@ git checkout -b feature/my-new-feature
 # Make changes and test
 cargo test --workspace
 cargo clippy --all-targets --all-features
-
-# Format code
 cargo fmt --all
 
 # Commit and push
 git commit -m "feat: add amazing feature"
 git push origin feature/my-new-feature
-\`\`\`
+```
 
-## 📄 License
+## License
 
-Apache 2.0 - See [LICENSE](LICENSE) for details.
+Censgate Redact is licensed under the [Business Source License 1.1 (BUSL-1.1)](LICENSE).
 
-Copyright 2024 Censgate
+**Additional Use Grant:** You may use Censgate Redact in production to process up to 100,000 redacted records per month per legal entity, free of charge. Beyond this threshold, a commercial license is required. Contact support@censgate.com for commercial licensing.
 
-## 🙏 Acknowledgments
+**Change Date:** On 1 March 2030 (or four years after each version's release, whichever comes first), each version of Censgate Redact automatically converts to the GNU General Public License v3.0 or later.
+
+See the [LICENSE](LICENSE) file for the complete license terms.
+
+### Mixed Licensing
+
+Unless explicitly stated otherwise in a subdirectory's own LICENSE file, all code in this repository is licensed under BUSL-1.1. Specific subdirectories (e.g., `sdk/` or `examples/`) may contain their own LICENSE files with different open source licenses (such as MIT or Apache-2.0) to facilitate integration.
+
+Copyright (c) 2026 Censgate LLC
+
+## Acknowledgments
 
 - Inspired by [Microsoft Presidio](https://microsoft.github.io/presidio/)
 - Built with [ONNX Runtime](https://onnxruntime.ai/)
 - Powered by [Rust](https://www.rust-lang.org/)
 - ML models from [HuggingFace](https://huggingface.co/)
 
-## 📧 Support
+## Support
 
-- **Issues**: [GitHub Issues](https://github.com/censgate/redact/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/censgate/redact/discussions)
-- **Email**: support@censgate.com
+- [GitHub Issues](https://github.com/censgate/redact/issues) — Bug reports and feature requests
+- [GitHub Discussions](https://github.com/censgate/redact/discussions) — Questions and general discussion
+- Email: support@censgate.com
 
 ---
 
 <div align="center">
 
-**[⭐ Star us on GitHub](https://github.com/censgate/redact)** if you find this project useful!
+**[Star us on GitHub](https://github.com/censgate/redact)** if you find this project useful!
 
 </div>

@@ -1,152 +1,96 @@
 #!/bin/bash
 
-# Version Update Script for CensGate Redact
-# This script automates version updates across the codebase
+# Version Update Script for Censgate Redact (Rust)
+# Updates version across workspace Cargo.toml and inter-crate dependencies
 
 set -e
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
+print_status() { echo -e "${BLUE}[INFO]${NC} $1"; }
+print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Function to show usage
 show_usage() {
     echo "Usage: $0 <new_version> [options]"
     echo ""
     echo "Arguments:"
-    echo "  new_version    The new version to set (e.g., v0.3.0, 0.3.0)"
+    echo "  new_version    The new version to set (e.g., 0.2.0, 1.0.0-beta.1)"
     echo ""
     echo "Options:"
     echo "  --dry-run      Show what would be changed without making changes"
+    echo "  --tag          Also create and push git tag"
     echo "  --help         Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 v0.3.0"
-    echo "  $0 0.3.0 --dry-run"
+    echo "  $0 0.2.0"
+    echo "  $0 0.2.0 --dry-run"
+    echo "  $0 1.0.0 --tag"
     echo ""
-    echo "This script will update version references in:"
-    echo "  - cmd/redactctl/version.go"
-    echo "  - cmd/redactctl/root.go"
-    echo "  - README.md"
-    echo "  - .github/workflows/release.yml (if applicable)"
+    echo "This script updates version in:"
+    echo "  - Cargo.toml (workspace.package.version)"
+    echo "  - crates/redact-ner/Cargo.toml (redact-core dependency)"
+    echo "  - crates/redact-api/Cargo.toml (redact-core, redact-ner dependencies)"
+    echo "  - crates/redact-cli/Cargo.toml (redact-core, redact-ner dependencies)"
+    echo "  - CHANGELOG.md (adds new version entry)"
 }
 
-# Function to validate version format
 validate_version() {
     local version=$1
+    # Remove 'v' prefix if present
+    version=${version#v}
     
-    # Remove 'v' prefix if present for validation
-    local clean_version=${version#v}
-    
-    # Check if version matches semantic versioning pattern
-    if [[ ! $clean_version =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$ ]]; then
+    if [[ ! $version =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
         print_error "Invalid version format: $version"
-        print_error "Version must follow semantic versioning (e.g., 1.0.0, v0.3.0, 1.0.0-beta.1)"
+        print_error "Version must follow semantic versioning (e.g., 0.2.0, 1.0.0-beta.1)"
         exit 1
     fi
     
-    print_success "Version format is valid: $version"
+    echo "$version"
 }
 
-# Function to update version in version.go
-update_version_go() {
+update_workspace_version() {
     local new_version=$1
     local dry_run=$2
-    local file="cmd/redactctl/version.go"
+    local file="Cargo.toml"
     
-    print_status "Updating version in $file"
+    print_status "Updating workspace version in $file"
     
     if [[ $dry_run == "true" ]]; then
-        echo "Would change: version = \"$new_version\""
+        echo "  Would change: version = \"$new_version\""
         return
     fi
     
-    # Update the version variable
-    if sed -i.bak "s/version   = \"[^\"]*\"/version   = \"$new_version\"/" "$file"; then
-        rm -f "$file.bak"
-        print_success "Updated version in $file"
-    else
-        print_error "Failed to update $file"
-        exit 1
-    fi
-}
-
-# Function to update version in root.go
-update_root_go() {
-    local new_version=$1
-    local dry_run=$2
-    local file="cmd/redactctl/root.go"
-    
-    print_status "Updating version in $file"
-    
-    if [[ $dry_run == "true" ]]; then
-        echo "Would change: Version: \"$new_version\""
-        return
-    fi
-    
-    # Update the Version field
-    if sed -i.bak "s/Version: \"[^\"]*\"/Version: \"$new_version\"/" "$file"; then
-        rm -f "$file.bak"
-        print_success "Updated version in $file"
-    else
-        print_error "Failed to update $file"
-        exit 1
-    fi
-}
-
-# Function to update version references in README.md
-update_readme() {
-    local new_version=$1
-    local dry_run=$2
-    local file="README.md"
-    
-    print_status "Updating version references in $file"
-    
-    if [[ $dry_run == "true" ]]; then
-        echo "Would update go get command to: go get github.com/censgate/redact@$new_version"
-        echo "Would update changelog references to: $new_version"
-        return
-    fi
-    
-    # Update go get command
-    if sed -i.bak "s|go get github.com/censgate/redact@v[0-9]\+\.[0-9]\+\.[0-9]\+|go get github.com/censgate/redact@$new_version|" "$file"; then
-        print_success "Updated go get command in $file"
-    else
-        print_warning "Could not update go get command in $file (may not exist)"
-    fi
-    
-    # Update changelog version references
-    if sed -i.bak "s|#### ✅ \*\*Overlapping Redactions Resolution (v[0-9]\+\.[0-9]\+\.[0-9]\+)\*\*|#### ✅ **Overlapping Redactions Resolution ($new_version)**|" "$file"; then
-        print_success "Updated changelog references in $file"
-    else
-        print_warning "Could not update changelog references in $file (may not exist)"
-    fi
-    
-    # Clean up backup file
+    # Update workspace.package.version
+    sed -i.bak "s/^\(version = \"\)[^\"]*\"/\1$new_version\"/" "$file"
     rm -f "$file.bak"
+    print_success "Updated workspace version to $new_version"
 }
 
-# Function to update CHANGELOG.md
+update_crate_dependency() {
+    local file=$1
+    local dep_name=$2
+    local new_version=$3
+    local dry_run=$4
+    
+    print_status "Updating $dep_name dependency in $file"
+    
+    if [[ $dry_run == "true" ]]; then
+        echo "  Would change: $dep_name version to $new_version"
+        return
+    fi
+    
+    # Update path + version dependency
+    sed -i.bak "s/\($dep_name = { path = \"[^\"]*\", version = \"\)[^\"]*/\1$new_version/" "$file"
+    rm -f "$file.bak"
+    print_success "Updated $dep_name to $new_version in $file"
+}
+
 update_changelog() {
     local new_version=$1
     local dry_run=$2
@@ -160,106 +104,92 @@ update_changelog() {
     print_status "Updating CHANGELOG.md"
     
     if [[ $dry_run == "true" ]]; then
-        echo "Would add new version entry to $file"
+        echo "  Would add new version entry for $new_version"
         return
     fi
     
-    # Add new version entry at the top
     local today=$(date +"%Y-%m-%d")
     local temp_file=$(mktemp)
     
-    # Create header
-    cat > "$temp_file" << EOF
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-## [$new_version] - $today
-
-### Added
-- 
-
-### Fixed
-- 
-
-### Changed
-- 
-
-EOF
-    
-    # Append existing changelog content (preserve formatting)
-    if [[ -s "$file" ]]; then
-        # Skip only the header lines, preserve everything else including empty lines
-        # Find the first line that starts with "## [" (version entry)
-        local first_version_line=$(grep -n "^## \[" "$file" | head -1 | cut -d: -f1)
-        if [[ -n "$first_version_line" ]]; then
-            # Copy everything from the first version line onwards
-            tail -n +"$first_version_line" "$file" >> "$temp_file"
-        else
-            # If no version found, skip just the header lines
-            tail -n +4 "$file" >> "$temp_file"
-        fi
+    # Check if this version already exists
+    if grep -q "## \[$new_version\]" "$file"; then
+        print_warning "Version $new_version already exists in CHANGELOG.md, skipping"
+        return
     fi
     
+    # Find the line with "# Changelog" or first "## [" and insert after header
+    awk -v ver="$new_version" -v date="$today" '
+    /^# Changelog/ { 
+        print; 
+        getline; 
+        print;
+        print "";
+        print "## [" ver "] - " date;
+        print "";
+        print "### Added";
+        print "";
+        print "### Changed";
+        print "";
+        print "### Fixed";
+        print "";
+        next;
+    }
+    { print }
+    ' "$file" > "$temp_file"
+    
     mv "$temp_file" "$file"
-    print_success "Updated CHANGELOG.md with new version entry"
+    print_success "Added $new_version entry to CHANGELOG.md"
 }
 
-# Function to create version update summary
-create_summary() {
+verify_build() {
+    local dry_run=$1
+    
+    if [[ $dry_run == "true" ]]; then
+        print_status "Would verify: cargo check --workspace"
+        return
+    fi
+    
+    print_status "Verifying workspace builds..."
+    if cargo check --workspace --quiet; then
+        print_success "Workspace builds successfully"
+    else
+        print_error "Workspace build failed!"
+        exit 1
+    fi
+}
+
+create_tag() {
     local new_version=$1
     local dry_run=$2
     
-    echo ""
-    echo "=========================================="
-    if [[ $dry_run == "true" ]]; then
-        echo "DRY RUN SUMMARY - No changes made"
-    else
-        echo "VERSION UPDATE SUMMARY"
-    fi
-    echo "=========================================="
-    echo "New version: $new_version"
-    echo "Files updated:"
-    echo "  ✓ cmd/redactctl/version.go"
-    echo "  ✓ cmd/redactctl/root.go"
-    echo "  ✓ README.md"
-    echo "  ✓ CHANGELOG.md"
-    echo ""
+    local tag="v$new_version"
     
     if [[ $dry_run == "true" ]]; then
-        print_warning "This was a dry run. Use without --dry-run to make actual changes."
-    else
-        print_success "Version update completed successfully!"
-        echo ""
-        echo "Next steps:"
-        echo "1. Review the changes: git diff"
-        echo "2. Commit the changes: git commit -m \"chore: bump version to $new_version\""
-        echo "3. Create a tag: git tag $new_version"
-        echo "4. Push changes: git push origin main --tags"
+        print_status "Would create tag: $tag"
+        print_status "Would push tag to origin"
+        return
     fi
+    
+    print_status "Creating git tag $tag"
+    git tag -a "$tag" -m "Release $tag"
+    print_success "Created tag $tag"
+    
+    print_status "Pushing tag to origin"
+    git push origin "$tag"
+    print_success "Pushed tag $tag"
 }
 
-# Main function
 main() {
     local new_version=""
     local dry_run="false"
+    local create_git_tag="false"
     
-    # Parse arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
-            --dry-run)
-                dry_run="true"
-                shift
-                ;;
-            --help|-h)
-                show_usage
-                exit 0
-                ;;
-            -*)
-                print_error "Unknown option: $1"
-                show_usage
-                exit 1
-                ;;
+            --dry-run) dry_run="true"; shift ;;
+            --tag) create_git_tag="true"; shift ;;
+            --help|-h) show_usage; exit 0 ;;
+            -*) print_error "Unknown option: $1"; show_usage; exit 1 ;;
             *)
                 if [[ -z "$new_version" ]]; then
                     new_version=$1
@@ -273,33 +203,67 @@ main() {
         esac
     done
     
-    # Check if version was provided
     if [[ -z "$new_version" ]]; then
         print_error "No version specified"
         show_usage
         exit 1
     fi
     
-    # Validate version format
-    validate_version "$new_version"
+    # Validate and clean version
+    new_version=$(validate_version "$new_version")
+    print_success "Version format valid: $new_version"
     
-    # Ensure we're in the project root
-    if [[ ! -f "go.mod" ]] || [[ ! -d "cmd/redactctl" ]]; then
+    # Ensure we're in project root
+    if [[ ! -f "Cargo.toml" ]] || [[ ! -d "crates" ]]; then
         print_error "This script must be run from the project root directory"
         exit 1
     fi
     
+    echo ""
     print_status "Starting version update to $new_version"
+    echo ""
     
-    # Update files
-    update_version_go "$new_version" "$dry_run"
-    update_root_go "$new_version" "$dry_run"
-    update_readme "$new_version" "$dry_run"
+    # Update all version references
+    update_workspace_version "$new_version" "$dry_run"
+    update_crate_dependency "crates/redact-ner/Cargo.toml" "redact-core" "$new_version" "$dry_run"
+    update_crate_dependency "crates/redact-api/Cargo.toml" "redact-core" "$new_version" "$dry_run"
+    update_crate_dependency "crates/redact-api/Cargo.toml" "redact-ner" "$new_version" "$dry_run"
+    update_crate_dependency "crates/redact-cli/Cargo.toml" "redact-core" "$new_version" "$dry_run"
+    update_crate_dependency "crates/redact-cli/Cargo.toml" "redact-ner" "$new_version" "$dry_run"
     update_changelog "$new_version" "$dry_run"
     
-    # Create summary
-    create_summary "$new_version" "$dry_run"
+    echo ""
+    verify_build "$dry_run"
+    
+    # Summary
+    echo ""
+    echo "=========================================="
+    if [[ $dry_run == "true" ]]; then
+        echo "DRY RUN COMPLETE - No changes made"
+    else
+        echo "VERSION UPDATE COMPLETE"
+    fi
+    echo "=========================================="
+    echo "Version: $new_version"
+    echo ""
+    
+    if [[ $dry_run == "true" ]]; then
+        print_warning "Run without --dry-run to apply changes"
+    else
+        if [[ $create_git_tag == "true" ]]; then
+            echo ""
+            create_tag "$new_version" "$dry_run"
+        else
+            echo "Next steps:"
+            echo "  1. Review changes: git diff"
+            echo "  2. Commit: git commit -am \"chore: bump version to $new_version\""
+            echo "  3. Push: git push"
+            echo "  4. Tag: git tag -a v$new_version -m \"Release v$new_version\""
+            echo "  5. Push tag: git push origin v$new_version"
+            echo ""
+            echo "Or run with --tag to auto-create and push the tag"
+        fi
+    fi
 }
 
-# Run main function with all arguments
 main "$@"
