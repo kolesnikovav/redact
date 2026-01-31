@@ -2,8 +2,10 @@
 
 <div align="center">
 
+<img src="assets/censgate-redact-logo-v1.png" alt="Censgate Redact" width="400">
+
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-BUSL--1.1-blue.svg)](LICENSE)
 [![Tests](https://github.com/censgate/redact/workflows/CI/badge.svg)](https://github.com/censgate/redact/actions)
 [![Crates.io](https://img.shields.io/crates/v/redact-core.svg)](https://crates.io/crates/redact-core)
 
