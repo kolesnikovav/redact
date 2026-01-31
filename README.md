@@ -451,26 +451,27 @@ See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed coverage report.
 
 ## Roadmap
 
-### v0.1.0 (Current)
+### v0.5.0 (Current)
 
+- [x] Complete Rust rewrite (replacing Go v0.1.0-v0.4.1)
 - [x] 36+ pattern-based entity types
 - [x] Full ONNX NER integration
 - [x] 4 anonymization strategies
 - [x] REST API service
 - [x] CLI tool
+- [x] Multi-arch Docker images (AMD64/ARM64)
 - [x] Comprehensive test suite (194 tests, ~75% coverage)
 
-### v0.2.0 (In Progress)
+### v0.6.0 (Planned)
 
 - [ ] WebAssembly (WASM) browser support
 - [ ] Publish crates to crates.io
-- [ ] Docker images on GitHub Container Registry
 - [ ] Enhanced documentation
+- [ ] Streaming API for large texts
 
-### v0.3.0 (Planned)
+### v0.7.0 (Future)
 
 - [ ] Mobile FFI bindings (Swift/Kotlin)
-- [ ] Streaming API for large texts
 - [ ] GPU acceleration for NER
 - [ ] Multi-language support expansion
 
