@@ -76,8 +76,7 @@ impl Encoding {
         } else if self.ids.len() < max_length {
             // Pad
             let padding_needed = max_length - self.ids.len();
-            self.ids
-                .extend(std::iter::repeat_n(pad_id, padding_needed));
+            self.ids.extend(std::iter::repeat_n(pad_id, padding_needed));
             self.tokens
                 .extend(std::iter::repeat_n("[PAD]".to_string(), padding_needed));
             self.offsets
