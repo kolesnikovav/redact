@@ -63,15 +63,18 @@ Benchmarks include:
 - Anonymization strategies (replace, mask, hash)
 - Cold vs warm start performance
 
-## Expected Performance
+## Latest Results (2026-01-31)
 
 | Metric | Redact (Rust) | Presidio (Python) | Speedup |
 |--------|---------------|-------------------|---------|
-| p50 Latency | 0.21 ms | 6.90 ms | **33x** |
-| p99 Latency | 1.05 ms | 21.46 ms | **20x** |
-| Avg Latency | 0.25 ms | 7.47 ms | **30x** |
-| Requests/sec | 3,926 | 134 | **29x** |
+| p50 Latency | 0.20 ms | 6.84 ms | **34x** |
+| p99 Latency | 0.78 ms | 12.38 ms | **16x** |
+| Avg Latency | 0.23 ms | 7.16 ms | **31x** |
+| Requests/sec | 4,321 | 139 | **31x** |
 
 **Environment:** Darwin arm64, Docker containers, 500 requests
+
+- **Redact:** Distroless container (37MB image)
+- **Presidio:** Official Microsoft container
 
 Results vary by hardware. Run `./scripts/benchmark-comparison.sh` to benchmark on your system.
