@@ -77,13 +77,13 @@ impl Encoding {
             // Pad
             let padding_needed = max_length - self.ids.len();
             self.ids
-                .extend(std::iter::repeat(pad_id).take(padding_needed));
+                .extend(std::iter::repeat_n(pad_id, padding_needed));
             self.tokens
-                .extend(std::iter::repeat("[PAD]".to_string()).take(padding_needed));
+                .extend(std::iter::repeat_n("[PAD]".to_string(), padding_needed));
             self.offsets
-                .extend(std::iter::repeat((0, 0)).take(padding_needed));
+                .extend(std::iter::repeat_n((0, 0), padding_needed));
             self.attention_mask
-                .extend(std::iter::repeat(0).take(padding_needed));
+                .extend(std::iter::repeat_n(0, padding_needed));
         }
     }
 

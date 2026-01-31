@@ -40,7 +40,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 
 ### Prerequisites
 
-- Rust 1.75 or higher
+- Rust 1.85 or higher
 - Python 3.8+ (for NER model export scripts)
 - Git
 
