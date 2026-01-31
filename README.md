@@ -1,5 +1,3 @@
-# Redact
-
 <div align="center">
 
 <img src="assets/censgate-redact-logo-v1.png" alt="Censgate Redact" width="400">
