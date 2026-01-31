@@ -1,22 +1,9 @@
-# Binaries for programs and plugins
+# Binaries and libraries
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
-
-# Dependency directories (remove the comment below to include it)
-vendor/
-
-# Go workspace file
-go.work
-go.work.sum
 
 # Node modules
 node_modules/
@@ -52,15 +39,11 @@ dist/
 build/
 *.log
 
-# Binaries
-redactctl
-
-AGENTS.md
-
-# Agent documentation and task tracking
-docs/agent/
+# Rust
 /target
 /Cargo.lock
 **/*.rs.bk
 *.pdb
-.DS_Store
+
+# Agent task tracking (not AGENTS.md which is project documentation)
+docs/agent/
