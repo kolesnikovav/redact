@@ -65,16 +65,20 @@ Benchmarks include:
 
 ## Latest Results (2026-01-31)
 
+### Latency (concurrency=1)
+
 | Metric | Redact (Rust) | Presidio (Python) | Speedup |
 |--------|---------------|-------------------|---------|
-| p50 Latency | 0.20 ms | 6.84 ms | **34x** |
-| p99 Latency | 0.78 ms | 12.38 ms | **16x** |
-| Avg Latency | 0.23 ms | 7.16 ms | **31x** |
-| Requests/sec | 4,321 | 139 | **31x** |
+| p50 Latency | 0.20 ms | 6.96 ms | **34x** |
+| p99 Latency | 0.96 ms | 22.50 ms | **23x** |
+| Avg Latency | 0.24 ms | 7.78 ms | **32x** |
 
-**Environment:** Darwin arm64, Docker containers, 500 requests
+### Throughput (concurrency=10)
 
-- **Redact:** Distroless container (37MB image)
-- **Presidio:** Official Microsoft container
+| Metric | Redact (Rust) | Presidio (Python) | Speedup |
+|--------|---------------|-------------------|---------|
+| Requests/sec | 16,223 | 171 | **95x** |
+
+**Environment:** Darwin arm64, Docker containers (distroless for Redact)
 
 Results vary by hardware. Run `./scripts/benchmark-comparison.sh` to benchmark on your system.

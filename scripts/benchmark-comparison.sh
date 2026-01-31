@@ -115,53 +115,70 @@ mkdir -p "$RESULTS_DIR"
 echo ""
 echo "========================================"
 echo "  Running Benchmarks"
-echo "  Requests: $REQUESTS | Concurrency: $CONCURRENCY"
 echo "========================================"
 
-# Benchmark Redact
+# Latency test (concurrency 1)
 echo ""
-info "Benchmarking Redact..."
+info "Latency Test (concurrency=1, requests=$REQUESTS)"
 echo ""
-oha -n "$REQUESTS" -c "$CONCURRENCY" \
+echo "--- Redact ---"
+oha -n "$REQUESTS" -c 1 \
     --method POST \
     -H "Content-Type: application/json" \
     -d "$PAYLOAD" \
     "http://localhost:${REDACT_PORT}/api/v1/analyze" \
-    | tee "${RESULTS_DIR}/redact-${TIMESTAMP}.txt"
+    | tee "${RESULTS_DIR}/redact-latency-${TIMESTAMP}.txt"
 
-# Benchmark Presidio
 echo ""
-info "Benchmarking Presidio..."
-echo ""
-oha -n "$REQUESTS" -c "$CONCURRENCY" \
+echo "--- Presidio ---"
+oha -n "$REQUESTS" -c 1 \
     --method POST \
     -H "Content-Type: application/json" \
     -d "$PAYLOAD" \
     "http://localhost:${PRESIDIO_PORT}/analyze" \
-    | tee "${RESULTS_DIR}/presidio-${TIMESTAMP}.txt"
+    | tee "${RESULTS_DIR}/presidio-latency-${TIMESTAMP}.txt"
+
+# Throughput test (concurrency 10)
+THROUGHPUT_REQUESTS=$((REQUESTS * 5))
+echo ""
+info "Throughput Test (concurrency=10, requests=$THROUGHPUT_REQUESTS)"
+echo ""
+echo "--- Redact ---"
+oha -n "$THROUGHPUT_REQUESTS" -c 10 \
+    --method POST \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" \
+    "http://localhost:${REDACT_PORT}/api/v1/analyze" \
+    | tee "${RESULTS_DIR}/redact-throughput-${TIMESTAMP}.txt"
+
+echo ""
+echo "--- Presidio ---"
+oha -n "$THROUGHPUT_REQUESTS" -c 10 \
+    --method POST \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" \
+    "http://localhost:${PRESIDIO_PORT}/analyze" \
+    | tee "${RESULTS_DIR}/presidio-throughput-${TIMESTAMP}.txt"
 
 # Extract metrics from text output
-extract_metric() {
-    local file="$1"
-    local pattern="$2"
-    grep -E "$pattern" "$file" | head -1 | awk '{print $NF}'
-}
-
 extract_percentile() {
     local file="$1"
     local pct="$2"
     grep -E "^\s+${pct}% in" "$file" | awk '{print $3}'
 }
 
-REDACT_P50=$(extract_percentile "${RESULTS_DIR}/redact-${TIMESTAMP}.txt" "50.00")
-REDACT_P99=$(extract_percentile "${RESULTS_DIR}/redact-${TIMESTAMP}.txt" "99.00")
-REDACT_RPS=$(grep "Requests/sec" "${RESULTS_DIR}/redact-${TIMESTAMP}.txt" | awk '{print $2}')
-REDACT_AVG=$(grep "Average:" "${RESULTS_DIR}/redact-${TIMESTAMP}.txt" | awk '{print $2}')
+# Latency metrics (from concurrency=1 test)
+REDACT_P50=$(extract_percentile "${RESULTS_DIR}/redact-latency-${TIMESTAMP}.txt" "50.00")
+REDACT_P99=$(extract_percentile "${RESULTS_DIR}/redact-latency-${TIMESTAMP}.txt" "99.00")
+REDACT_AVG=$(grep "Average:" "${RESULTS_DIR}/redact-latency-${TIMESTAMP}.txt" | awk '{print $2}')
 
-PRESIDIO_P50=$(extract_percentile "${RESULTS_DIR}/presidio-${TIMESTAMP}.txt" "50.00")
-PRESIDIO_P99=$(extract_percentile "${RESULTS_DIR}/presidio-${TIMESTAMP}.txt" "99.00")
-PRESIDIO_RPS=$(grep "Requests/sec" "${RESULTS_DIR}/presidio-${TIMESTAMP}.txt" | awk '{print $2}')
-PRESIDIO_AVG=$(grep "Average:" "${RESULTS_DIR}/presidio-${TIMESTAMP}.txt" | awk '{print $2}')
+PRESIDIO_P50=$(extract_percentile "${RESULTS_DIR}/presidio-latency-${TIMESTAMP}.txt" "50.00")
+PRESIDIO_P99=$(extract_percentile "${RESULTS_DIR}/presidio-latency-${TIMESTAMP}.txt" "99.00")
+PRESIDIO_AVG=$(grep "Average:" "${RESULTS_DIR}/presidio-latency-${TIMESTAMP}.txt" | awk '{print $2}')
+
+# Throughput metrics (from concurrency=10 test)
+REDACT_RPS=$(grep "Requests/sec" "${RESULTS_DIR}/redact-throughput-${TIMESTAMP}.txt" | awk '{print $2}')
+PRESIDIO_RPS=$(grep "Requests/sec" "${RESULTS_DIR}/presidio-throughput-${TIMESTAMP}.txt" | awk '{print $2}')
 
 # Calculate speedups (strip 'ms' suffix for calculation)
 strip_ms() { echo "$1" | sed 's/ *ms//'; }
@@ -209,8 +226,8 @@ Entities detected: EMAIL_ADDRESS, PHONE_NUMBER, US_SSN
 
 ## Raw Data
 
-- [redact-${TIMESTAMP}.txt](redact-${TIMESTAMP}.txt)
-- [presidio-${TIMESTAMP}.txt](presidio-${TIMESTAMP}.txt)
+- Latency test: [redact-latency-${TIMESTAMP}.txt](redact-latency-${TIMESTAMP}.txt), [presidio-latency-${TIMESTAMP}.txt](presidio-latency-${TIMESTAMP}.txt)
+- Throughput test: [redact-throughput-${TIMESTAMP}.txt](redact-throughput-${TIMESTAMP}.txt), [presidio-throughput-${TIMESTAMP}.txt](presidio-throughput-${TIMESTAMP}.txt)
 
 ## Reproduce
 

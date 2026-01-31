@@ -385,9 +385,9 @@ Measured using [oha](https://github.com/hatoo/oha) with both services running in
 
 | Metric | Redact (Rust) | Presidio (Python) | Speedup |
 |--------|---------------|-------------------|---------|
-| p50 Latency | 0.20 ms | 6.84 ms | **34x** |
-| p99 Latency | 0.78 ms | 12.38 ms | **16x** |
-| Requests/sec | 4,321 | 139 | **31x** |
+| p50 Latency | 0.20 ms | 6.96 ms | **34x** |
+| p99 Latency | 0.96 ms | 22.50 ms | **23x** |
+| Throughput | 16,223 req/s | 171 req/s | **95x** |
 
 Test payload: `Contact john.doe@example.com or call (555) 123-4567. SSN: 123-45-6789.`
 
