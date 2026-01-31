@@ -395,17 +395,14 @@ engine.recognizer_registry_mut().add_recognizer(Arc::new(ner));
 ### Run Benchmarks
 
 ```bash
-# Compare against Presidio (requires Docker)
+# REST API comparison vs Presidio (requires Docker)
 ./scripts/benchmark-comparison.sh
 
-# Redact-only benchmarks
-./scripts/benchmark-comparison.sh --skip-presidio
-
-# Criterion micro-benchmarks
+# Criterion micro-benchmarks (Redact internals)
 cargo bench --package redact-core
 ```
 
-See [docs/benchmarks/](docs/benchmarks/) for methodology and detailed results.
+See [docs/benchmarks/](docs/benchmarks/) for methodology and results.
 
 ## Project Structure
 

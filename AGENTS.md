@@ -161,17 +161,14 @@ cargo test --package redact-ner --test ner_e2e -- --ignored
 ## Benchmarking
 
 ```bash
-# Compare Redact vs Presidio (requires Docker)
+# REST API comparison vs Presidio (requires Docker)
 ./scripts/benchmark-comparison.sh
 
-# Redact-only benchmarks (no Docker)
-./scripts/benchmark-comparison.sh --skip-presidio
-
-# Criterion micro-benchmarks
+# Criterion micro-benchmarks (Redact internals)
 cargo bench --package redact-core
 ```
 
-Results are saved to `docs/benchmarks/results-*.md`. See [docs/benchmarks/README.md](docs/benchmarks/README.md) for methodology.
+Results saved to `docs/benchmarks/results-*.md`. The REST API benchmark is the fairest comparison since both tools are deployed as HTTP services.
 
 ## Common Tasks
 
