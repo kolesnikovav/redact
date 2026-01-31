@@ -2,8 +2,10 @@
 
 <div align="center">
 
+<img src="assets/censgate-redact-logo-v1.png" alt="Censgate Redact" width="400">
+
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-BUSL--1.1-blue.svg)](LICENSE)
 [![Tests](https://github.com/censgate/redact/workflows/CI/badge.svg)](https://github.com/censgate/redact/actions)
 [![Crates.io](https://img.shields.io/crates/v/redact-core.svg)](https://crates.io/crates/redact-core)
 
@@ -451,26 +453,27 @@ See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed coverage report.
 
 ## Roadmap
 
-### v0.1.0 (Current)
+### v0.5.0 (Current)
 
+- [x] Complete Rust rewrite (replacing Go v0.1.0-v0.4.1)
 - [x] 36+ pattern-based entity types
 - [x] Full ONNX NER integration
 - [x] 4 anonymization strategies
 - [x] REST API service
 - [x] CLI tool
+- [x] Multi-arch Docker images (AMD64/ARM64)
 - [x] Comprehensive test suite (194 tests, ~75% coverage)
 
-### v0.2.0 (In Progress)
+### v0.6.0 (Planned)
 
 - [ ] WebAssembly (WASM) browser support
 - [ ] Publish crates to crates.io
-- [ ] Docker images on GitHub Container Registry
 - [ ] Enhanced documentation
+- [ ] Streaming API for large texts
 
-### v0.3.0 (Planned)
+### v0.7.0 (Future)
 
 - [ ] Mobile FFI bindings (Swift/Kotlin)
-- [ ] Streaming API for large texts
 - [ ] GPU acceleration for NER
 - [ ] Multi-language support expansion
 
