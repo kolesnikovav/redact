@@ -1,6 +1,19 @@
-# Multi-stage build for minimal runtime image
+# Multi-stage, multi-architecture build for minimal runtime image
+# Supports: linux/amd64, linux/arm64
+#
+# Build for current platform:
+#   docker build -t redact .
+#
+# Build multi-arch (requires buildx):
+#   docker buildx build --platform linux/amd64,linux/arm64 -t redact .
+#
+
 # Stage 1: Build
-FROM rust:1.93-slim AS builder
+FROM --platform=$BUILDPLATFORM rust:1.93-slim AS builder
+
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+ARG TARGETARCH
 
 # Install build dependencies (including C++ for tokenizers/esaxx-rs)
 RUN apt-get update && apt-get install -y \
@@ -10,14 +23,52 @@ RUN apt-get update && apt-get install -y \
     cmake \
     && rm -rf /var/lib/apt/lists/*
 
+# Install cross-compilation tools if needed
+RUN if [ "$TARGETARCH" = "arm64" ] && [ "$BUILDPLATFORM" != "linux/arm64" ]; then \
+        apt-get update && apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            libc6-dev-arm64-cross \
+        && rm -rf /var/lib/apt/lists/* \
+        && rustup target add aarch64-unknown-linux-gnu; \
+    elif [ "$TARGETARCH" = "amd64" ] && [ "$BUILDPLATFORM" != "linux/amd64" ]; then \
+        apt-get update && apt-get install -y \
+            gcc-x86-64-linux-gnu \
+            g++-x86-64-linux-gnu \
+            libc6-dev-amd64-cross \
+        && rm -rf /var/lib/apt/lists/* \
+        && rustup target add x86_64-unknown-linux-gnu; \
+    fi
+
 WORKDIR /app
 
 # Copy workspace configuration
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 
-# Build the API server in release mode
-RUN cargo build --release --package redact-api
+# Build for target architecture with optimizations
+ENV CARGO_PROFILE_RELEASE_LTO=thin
+ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+
+RUN case "$TARGETARCH" in \
+        arm64) \
+            if [ "$BUILDPLATFORM" = "linux/arm64" ]; then \
+                RUSTFLAGS="-C target-cpu=native" cargo build --release --package redact-api; \
+            else \
+                RUSTFLAGS="-C linker=aarch64-linux-gnu-gcc -C target-cpu=neoverse-n1" \
+                cargo build --release --package redact-api --target aarch64-unknown-linux-gnu \
+                && cp target/aarch64-unknown-linux-gnu/release/redact-api target/release/; \
+            fi ;; \
+        amd64) \
+            if [ "$BUILDPLATFORM" = "linux/amd64" ]; then \
+                RUSTFLAGS="-C target-cpu=native" cargo build --release --package redact-api; \
+            else \
+                RUSTFLAGS="-C linker=x86_64-linux-gnu-gcc -C target-cpu=x86-64-v3" \
+                cargo build --release --package redact-api --target x86_64-unknown-linux-gnu \
+                && cp target/x86_64-unknown-linux-gnu/release/redact-api target/release/; \
+            fi ;; \
+        *) cargo build --release --package redact-api ;; \
+    esac
 
 # Stage 2: Minimal runtime using distroless
 # gcr.io/distroless/cc contains only:

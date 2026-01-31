@@ -109,10 +109,14 @@ cargo test --workspace
 
 ### Using Docker
 
+Multi-architecture images available for `linux/amd64` and `linux/arm64`:
+
 ```bash
 docker pull ghcr.io/censgate/redact:latest
 docker run -p 8080:8080 ghcr.io/censgate/redact:latest
 ```
+
+The image uses a minimal [distroless](https://github.com/GoogleContainerTools/distroless) base (~37MB) optimized for ARM64 (AWS Graviton, Apple Silicon) and AMD64.
 
 ### Rust Version
 
