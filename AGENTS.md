@@ -158,6 +158,21 @@ cargo test --package redact-cli
 cargo test --package redact-ner --test ner_e2e -- --ignored
 ```
 
+## Benchmarking
+
+```bash
+# Compare Redact vs Presidio (requires Docker)
+./scripts/benchmark-comparison.sh
+
+# Redact-only benchmarks (no Docker)
+./scripts/benchmark-comparison.sh --skip-presidio
+
+# Criterion micro-benchmarks
+cargo bench --package redact-core
+```
+
+Results are saved to `docs/benchmarks/results-*.md`. See [docs/benchmarks/README.md](docs/benchmarks/README.md) for methodology.
+
 ## Common Tasks
 
 ### Adding a New Entity Pattern

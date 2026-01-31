@@ -392,6 +392,21 @@ engine.recognizer_registry_mut().add_recognizer(Arc::new(ner));
 | Memory usage | ~50MB | ~300MB |
 | Startup time | ~50ms | ~2-5s |
 
+### Run Benchmarks
+
+```bash
+# Compare against Presidio (requires Docker)
+./scripts/benchmark-comparison.sh
+
+# Redact-only benchmarks
+./scripts/benchmark-comparison.sh --skip-presidio
+
+# Criterion micro-benchmarks
+cargo bench --package redact-core
+```
+
+See [docs/benchmarks/](docs/benchmarks/) for methodology and detailed results.
+
 ## Project Structure
 
 ```
