@@ -31,7 +31,7 @@ fn test_concurrent_analysis() {
     // Wait for all threads and verify results
     for handle in handles {
         let result = handle.join().unwrap();
-        assert!(result.detected_entities.len() >= 1);
+        assert!(!result.detected_entities.is_empty());
     }
 }
 
@@ -104,7 +104,7 @@ fn test_concurrent_with_different_languages() {
 
     // Note: Pattern recognizer currently only supports English
     // This test verifies that specifying different languages doesn't cause crashes
-    let languages = vec!["en", "en", "en", "en"]; // Use English for all
+    let languages = ["en", "en", "en", "en"]; // Use English for all
 
     for (i, lang) in languages.iter().enumerate() {
         let engine_clone = Arc::clone(&engine);
@@ -120,7 +120,7 @@ fn test_concurrent_with_different_languages() {
 
     for handle in handles {
         let result = handle.join().unwrap();
-        assert!(result.detected_entities.len() >= 1);
+        assert!(!result.detected_entities.is_empty());
     }
 }
 

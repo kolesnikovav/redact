@@ -47,7 +47,7 @@ fn test_very_long_text() {
     let result = engine.analyze(&long_text, None);
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert!(result.detected_entities.len() >= 1);
+    assert!(!result.detected_entities.is_empty());
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn test_unicode_characters() {
     let result = engine.analyze(text, None);
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert!(result.detected_entities.len() >= 1);
+    assert!(!result.detected_entities.is_empty());
 }
 
 #[test]
@@ -212,17 +212,17 @@ fn test_entity_at_text_boundaries() {
     // Entity at start
     let result = engine.analyze("test@example.com is my email", None);
     assert!(result.is_ok());
-    assert!(result.unwrap().detected_entities.len() >= 1);
+    assert!(!result.unwrap().detected_entities.is_empty());
 
     // Entity at end
     let result = engine.analyze("My email is test@example.com", None);
     assert!(result.is_ok());
-    assert!(result.unwrap().detected_entities.len() >= 1);
+    assert!(!result.unwrap().detected_entities.is_empty());
 
     // Entity is entire text
     let result = engine.analyze("test@example.com", None);
     assert!(result.is_ok());
-    assert!(result.unwrap().detected_entities.len() >= 1);
+    assert!(!result.unwrap().detected_entities.is_empty());
 }
 
 #[test]
@@ -296,7 +296,7 @@ fn test_anonymization_preserves_length() {
     let result = result.unwrap();
 
     // Anonymized text should have similar length (not exact due to entity replacement)
-    assert!(result.text.len() > 0);
+    assert!(!result.text.is_empty());
 }
 
 #[test]

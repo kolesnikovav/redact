@@ -68,7 +68,7 @@ fn luhn_check(digits: &[u32]) -> bool {
         double = !double;
     }
 
-    sum % 10 == 0
+    sum.is_multiple_of(10)
 }
 
 /// Validate IBAN format and checksum.
@@ -295,7 +295,7 @@ fn validate_isbn10(isbn: &str) -> f32 {
         sum += digit * (10 - i as u32);
     }
 
-    if sum % 11 == 0 {
+    if sum.is_multiple_of(11) {
         1.0
     } else {
         0.0
@@ -315,7 +315,7 @@ fn validate_isbn13(isbn: &str) -> f32 {
         .map(|(i, &d)| if i % 2 == 0 { d } else { d * 3 })
         .sum();
 
-    if sum % 10 == 0 {
+    if sum.is_multiple_of(10) {
         1.0
     } else {
         0.0

@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_inactive_policy() {
-        let mut policy = Policy {
+        let policy = Policy {
             id: "test".to_string(),
             name: "test".to_string(),
             display_name: "Test Policy".to_string(),
