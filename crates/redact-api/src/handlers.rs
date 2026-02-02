@@ -61,10 +61,12 @@ impl From<anyhow::Error> for ApiError {
 
 /// Health check endpoint
 pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
+    let stats = state.engine.recognizer_registry().stats();
     Json(HealthResponse {
         status: "healthy".to_string(),
         version: redact_core::VERSION.to_string(),
-        recognizers: state.engine.recognizer_registry().recognizers().len(),
+        recognizers: stats.recognizer_count,
+        entity_types: stats.entity_coverage.len(),
     })
 }
 

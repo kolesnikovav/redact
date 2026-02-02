@@ -60,9 +60,8 @@ fn test_url() {
 
 #[test]
 fn test_domain_name() {
-    // Note: Pattern needs to be implemented separately from URL
-    // Currently domain names are detected as part of URLs
-    // Skipping standalone domain detection for now
+    assert_entity_detected("Visit example.com for info", EntityType::DomainName, 0.7);
+    assert_entity_detected("Host: subdomain.example.org", EntityType::DomainName, 0.7);
 }
 
 // ============================================================================
@@ -71,10 +70,13 @@ fn test_domain_name() {
 
 #[test]
 fn test_credit_card() {
-    // Pattern requires no separators for credit card numbers
-    assert_entity_detected("Card 4532123456789010", EntityType::CreditCard, 0.9);
-    // Test different card types
-    assert_entity_detected("Visa: 4532123456789", EntityType::CreditCard, 0.9);
+    // Use valid Luhn credit card numbers (validation rejects invalid checksums)
+    // Visa test card: 4532015112830366 (passes Luhn)
+    assert_entity_detected("Card 4532015112830366", EntityType::CreditCard, 0.9);
+    // Mastercard test card: 5425233430109903 (passes Luhn)
+    assert_entity_detected("Mastercard: 5425233430109903", EntityType::CreditCard, 0.9);
+    // Amex test card: 374245455400126 (15 digits, passes Luhn)
+    assert_entity_detected("Amex: 374245455400126", EntityType::CreditCard, 0.9);
 }
 
 #[test]
@@ -124,7 +126,9 @@ fn test_us_zip_code() {
 #[test]
 fn test_uk_nhs() {
     // Base confidence is 0.6, boosted by context words like "NHS"
-    assert_entity_detected("NHS number 123 456 7890", EntityType::UkNhs, 0.7);
+    // Must use a valid NHS number that passes mod-11 checksum
+    // 4010232137 is a valid NHS number
+    assert_entity_detected("NHS number 401 023 2137", EntityType::UkNhs, 0.7);
 }
 
 #[test]
@@ -220,9 +224,11 @@ fn test_age() {
 
 #[test]
 fn test_isbn() {
-    // Pattern matches ISBN with or without hyphens
-    assert_entity_detected("ISBN: 9783161484100", EntityType::Isbn, 0.8);
-    assert_entity_detected("ISBN-13: 9783161484100", EntityType::Isbn, 0.8);
+    // Pattern matches ISBN-13 (13 digits) with valid checksum
+    // 9780306406157 is a valid ISBN-13
+    assert_entity_detected("ISBN 9780306406157", EntityType::Isbn, 0.8);
+    // Also test ISBN-10 format: 0306406152 (passes ISBN-10 checksum)
+    assert_entity_detected("Book ISBN: 0306406152", EntityType::Isbn, 0.8);
 }
 
 #[test]
@@ -331,8 +337,9 @@ fn test_date_time() {
 #[test]
 fn test_multiple_entity_types_in_text() {
     let engine = create_engine();
+    // Use valid credit card number that passes Luhn: 4532015112830366
     let text = "Contact john@example.com at 555-123-4567 or visit https://example.com. \
-                SSN: 123-45-6789, Card: 4532123456789010";
+                SSN: 123-45-6789, Card: 4532015112830366";
 
     let result = engine.analyze(text, None).unwrap();
 
@@ -394,6 +401,7 @@ fn test_entities_with_various_separators() {
     assert_entity_detected("555.123.4567", EntityType::PhoneNumber, 0.7);
     assert_entity_detected("(555) 123-4567", EntityType::PhoneNumber, 0.7);
 
-    // Credit cards - pattern requires no separators
-    assert_entity_detected("4532123456789010", EntityType::CreditCard, 0.9);
+    // Credit cards - must pass Luhn validation
+    // 4532015112830366 is a valid Visa test number
+    assert_entity_detected("4532015112830366", EntityType::CreditCard, 0.9);
 }

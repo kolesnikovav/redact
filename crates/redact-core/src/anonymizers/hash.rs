@@ -122,7 +122,6 @@ mod tests {
     fn test_hash_consistency() {
         let anonymizer = HashAnonymizer::new();
         let text = "test@example.com";
-        let config = AnonymizerConfig::default();
 
         let hash1 = anonymizer.hash_value(text, None);
         let hash2 = anonymizer.hash_value(text, None);

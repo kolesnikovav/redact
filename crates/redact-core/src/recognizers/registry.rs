@@ -125,57 +125,100 @@ impl RecognizerRegistry {
         Ok(resolved)
     }
 
-    /// Resolve overlapping detections by keeping highest confidence
+    /// Resolve overlapping detections using a multi-factor scoring approach.
+    ///
+    /// When multiple patterns match the same text span, we use the following
+    /// priority order to determine which detection to keep:
+    ///
+    /// 1. **Suppression rules**: Specific entity types suppress generic ones
+    ///    (e.g., UK_MOBILE_NUMBER suppresses PHONE_NUMBER)
+    /// 2. **Combined score**: Weighted combination of confidence and specificity
+    /// 3. **Span length**: Longer matches preferred (more context = more reliable)
+    ///
+    /// This approach reduces false positives by preferring:
+    /// - Country/domain-specific patterns over generic ones
+    /// - Validated patterns (checksums) over unvalidated
+    /// - Higher confidence matches
     fn resolve_overlaps(&self, results: Vec<RecognizerResult>) -> Vec<RecognizerResult> {
         if results.is_empty() {
             return results;
         }
 
         let mut resolved = Vec::new();
-        let mut skip_until = 0;
+        let mut consumed = vec![false; results.len()];
 
         for i in 0..results.len() {
-            if i < skip_until {
+            if consumed[i] {
                 continue;
             }
 
-            let current = &results[i];
-            let mut keep = current.clone();
-            skip_until = i + 1;
+            // Collect all overlapping results (including current)
+            let mut group: Vec<usize> = vec![i];
+            for j in (i + 1)..results.len() {
+                if consumed[j] {
+                    continue;
+                }
+                // Check if j overlaps with any result already in the group
+                let overlaps_group = group.iter().any(|&g| results[g].overlaps_with(&results[j]));
+                if overlaps_group {
+                    group.push(j);
+                }
+            }
 
-            // Check for overlaps with subsequent results
-            for (offset, next) in results.iter().enumerate().skip(i + 1) {
-                // If next result doesn't overlap, we're done
-                if !current.overlaps_with(next) {
-                    break;
+            // Find the best result in this overlapping group
+            let mut best_idx = i;
+            let mut best = &results[i];
+
+            for &idx in &group[1..] {
+                let candidate = &results[idx];
+
+                // Check suppression rules first
+                if best.entity_type.is_suppressed_by(&candidate.entity_type) {
+                    best = candidate;
+                    best_idx = idx;
+                    continue;
                 }
 
-                // If current contains next, check scores
-                if current.contains(next) {
-                    // Keep the one with higher score
-                    if next.score > keep.score {
-                        keep = next.clone();
-                    }
-                    skip_until = offset + 1;
-                } else if next.contains(current) {
-                    // Next contains current, prefer the larger one with higher score
-                    if next.score >= keep.score {
-                        keep = next.clone();
-                    }
-                    skip_until = offset + 1;
-                } else {
-                    // Partial overlap - keep the one with higher score
-                    if next.score > keep.score {
-                        keep = next.clone();
-                        skip_until = offset + 1;
+                if candidate.entity_type.is_suppressed_by(&best.entity_type) {
+                    continue;
+                }
+
+                // Calculate combined scores
+                let best_combined = Self::combined_score(best);
+                let candidate_combined = Self::combined_score(candidate);
+
+                if candidate_combined > best_combined {
+                    best = candidate;
+                    best_idx = idx;
+                } else if (candidate_combined - best_combined).abs() < 0.05 {
+                    // Scores are close - prefer longer match (more context)
+                    if candidate.len() > best.len() {
+                        best = candidate;
+                        best_idx = idx;
                     }
                 }
             }
 
-            resolved.push(keep);
+            // Mark all in group as consumed
+            for &idx in &group {
+                consumed[idx] = true;
+            }
+
+            resolved.push(results[best_idx].clone());
         }
 
         resolved
+    }
+
+    /// Calculate a combined score from confidence and entity specificity.
+    ///
+    /// Formula: 0.6 * confidence + 0.4 * (specificity / 100)
+    ///
+    /// This weights confidence higher but gives meaningful boost to
+    /// more specific entity types.
+    fn combined_score(result: &RecognizerResult) -> f32 {
+        let specificity = result.entity_type.specificity_score() as f32 / 100.0;
+        0.6 * result.score + 0.4 * specificity
     }
 
     /// Get statistics about the registry
@@ -251,9 +294,9 @@ mod tests {
 
     #[test]
     fn test_overlap_resolution() {
-        let mut registry = RecognizerRegistry::new();
+        let registry = RecognizerRegistry::new();
 
-        // Create overlapping results
+        // Create overlapping results with same entity type
         let mut results = vec![
             RecognizerResult::new(EntityType::Person, 0, 10, 0.8, "test1"),
             RecognizerResult::new(EntityType::Person, 5, 15, 0.9, "test2"),
@@ -262,9 +305,46 @@ mod tests {
         results.sort();
         let resolved = registry.resolve_overlaps(results);
 
-        // Should keep only the higher confidence result
+        // Should keep only the higher combined score result
+        // Both have same specificity (Person = 85), so higher confidence wins
         assert_eq!(resolved.len(), 1);
         assert_eq!(resolved[0].score, 0.9);
+    }
+
+    #[test]
+    fn test_overlap_resolution_specificity() {
+        let registry = RecognizerRegistry::new();
+
+        // UK mobile (specificity 70) should win over generic phone (specificity 50)
+        // even with slightly lower confidence
+        let mut results = vec![
+            RecognizerResult::new(EntityType::PhoneNumber, 0, 13, 0.75, "pattern"),
+            RecognizerResult::new(EntityType::UkMobileNumber, 0, 13, 0.80, "pattern"),
+        ];
+
+        results.sort();
+        let resolved = registry.resolve_overlaps(results);
+
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0].entity_type, EntityType::UkMobileNumber);
+    }
+
+    #[test]
+    fn test_overlap_resolution_suppression() {
+        let registry = RecognizerRegistry::new();
+
+        // Generic phone should be suppressed by UK mobile at same location
+        let mut results = vec![
+            RecognizerResult::new(EntityType::PhoneNumber, 0, 13, 0.90, "pattern"),
+            RecognizerResult::new(EntityType::UkMobileNumber, 0, 13, 0.80, "pattern"),
+        ];
+
+        results.sort();
+        let resolved = registry.resolve_overlaps(results);
+
+        // UK mobile wins due to suppression rule, even with lower confidence
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0].entity_type, EntityType::UkMobileNumber);
     }
 
     #[test]
