@@ -374,7 +374,13 @@ fn test_concurrent_with_rayon() {
     let engine = Arc::new(AnalyzerEngine::new());
     // Use valid SSN format (serial must be 0001-9999, not 0000)
     let texts: Vec<String> = (0..100)
-        .map(|i| format!("Email: test{}@example.com, SSN: 123-45-{:04}", i, (i % 9999) + 1))
+        .map(|i| {
+            format!(
+                "Email: test{}@example.com, SSN: 123-45-{:04}",
+                i,
+                (i % 9999) + 1
+            )
+        })
         .collect();
 
     let results: Vec<_> = texts

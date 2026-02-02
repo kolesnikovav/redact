@@ -224,10 +224,7 @@ impl EntityType {
 
         // Generic passport suppressed by country-specific
         if *self == EntityType::PassportNumber {
-            return matches!(
-                other,
-                EntityType::UsPassport | EntityType::UkPassportNumber
-            );
+            return matches!(other, EntityType::UsPassport | EntityType::UkPassportNumber);
         }
 
         // Generic crypto wallet suppressed by specific addresses

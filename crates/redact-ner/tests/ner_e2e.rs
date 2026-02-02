@@ -576,7 +576,10 @@ fn test_ner_entity_types() -> Result<()> {
     // Test cases for each entity type
     let test_cases = vec![
         ("Marie Curie won the Nobel Prize.", EntityType::Person),
-        ("Apple Inc. is based in Cupertino.", EntityType::Organization),
+        (
+            "Apple Inc. is based in Cupertino.",
+            EntityType::Organization,
+        ),
         ("The Eiffel Tower is in Paris.", EntityType::Location),
     ];
 

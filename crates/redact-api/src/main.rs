@@ -29,7 +29,10 @@ fn build_engine() -> AnalyzerEngine {
                     info!("NER recognizer loaded from {}", path);
                 }
                 Err(e) => {
-                    warn!("NER model path set but load failed: {}. Running with pattern-only.", e);
+                    warn!(
+                        "NER model path set but load failed: {}. Running with pattern-only.",
+                        e
+                    );
                 }
             }
         }

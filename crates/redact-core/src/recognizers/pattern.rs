@@ -540,7 +540,10 @@ mod tests {
             .filter(|r| r.entity_type == EntityType::EmailAddress)
             .collect();
         assert_eq!(email_results.len(), 1);
-        assert_eq!(email_results[0].text, Some("john.doe@example.com".to_string()));
+        assert_eq!(
+            email_results[0].text,
+            Some("john.doe@example.com".to_string())
+        );
         assert!(email_results[0].score >= 0.8);
     }
 
@@ -593,7 +596,10 @@ mod tests {
 
         assert!(!results.is_empty());
         let nhs_result = results.iter().find(|r| r.entity_type == EntityType::UkNhs);
-        assert!(nhs_result.is_some(), "Should detect NHS number with context");
+        assert!(
+            nhs_result.is_some(),
+            "Should detect NHS number with context"
+        );
         // Score should be boosted due to "NHS" context
         if let Some(result) = nhs_result {
             assert!(result.score > 0.6);
