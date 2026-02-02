@@ -5,8 +5,10 @@
 
 pub mod pattern;
 pub mod registry;
+pub mod validation;
 
 pub use registry::RecognizerRegistry;
+pub use validation::validate_entity;
 
 use crate::types::{EntityType, RecognizerResult};
 use anyhow::Result;

@@ -21,7 +21,7 @@ A production-ready, Rust-based solution designed as a drop-in replacement for Mi
 
 - **High Performance** — 10-100x faster than Python-based solutions with sub-millisecond inference
 - **Memory Safe** — Rust's borrow checker eliminates entire classes of security vulnerabilities
-- **Production Ready** — 36+ pattern-based entity types plus transformer-based NER
+- **Production Ready** — 36 pattern-based entity types with validation, plus transformer-based NER
 - **Multi-Platform** — Native server, WebAssembly (WASM), and CLI support
 - **ML-Powered** — Full ONNX Runtime integration for transformer models (BERT, RoBERTa, DistilBERT)
 - **Lightweight** — ~20-50MB memory footprint vs ~300MB for Presidio
@@ -305,7 +305,7 @@ curl -X POST http://localhost:8080/api/v1/anonymize \
 
 ## Supported Entity Types
 
-### Pattern-Based (36+ types)
+### Pattern-Based (36 types)
 
 | Category | Entity Types |
 |----------|-------------|
@@ -314,8 +314,11 @@ curl -X POST http://localhost:8080/api/v1/anonymize \
 | **US** | `US_SSN`, `US_DRIVER_LICENSE`, `US_PASSPORT`, `US_ZIP_CODE` |
 | **UK** | `UK_NHS`, `UK_NINO`, `UK_POSTCODE`, `UK_PHONE_NUMBER`, `UK_MOBILE_NUMBER`, `UK_SORT_CODE`, `UK_DRIVER_LICENSE`, `UK_PASSPORT_NUMBER`, `UK_COMPANY_NUMBER` |
 | **Healthcare** | `MEDICAL_LICENSE`, `MEDICAL_RECORD_NUMBER` |
-| **Crypto** | `BTC_ADDRESS`, `ETH_ADDRESS` |
+| **Crypto** | `CRYPTO_WALLET`, `BTC_ADDRESS`, `ETH_ADDRESS` |
 | **Technical** | `GUID`, `MAC_ADDRESS`, `MD5_HASH`, `SHA1_HASH`, `SHA256_HASH` |
+| **Generic** | `PASSPORT_NUMBER`, `AGE`, `ISBN`, `PO_BOX`, `DATE_TIME` |
+
+Pattern-based detection includes validation (Luhn for credit cards, mod-11 for NHS, IBAN checksums) to reduce false positives.
 
 ### NER-Based (ML-Powered)
 
@@ -384,13 +387,33 @@ let mut engine = AnalyzerEngine::new();
 engine.recognizer_registry_mut().add_recognizer(Arc::new(ner));
 ```
 
+### Model Directory Structure
+
+The export script creates a directory with the following files:
+
+```
+models/bert-base-ner/
+├── model.onnx          # ONNX model file (REQUIRED)
+├── tokenizer.json      # HuggingFace tokenizer (REQUIRED)
+├── config.json         # Model config with label mappings
+├── special_tokens_map.json
+└── tokenizer_config.json
+```
+
+**Required files for inference:**
+- `model.onnx` - The ONNX-exported transformer model
+- `tokenizer.json` - HuggingFace fast tokenizer (must be in same directory as model, or specify via `tokenizer_path`)
+
 ### Recommended Models
 
 | Model | Size | Use Case |
 |-------|------|----------|
-| `dslim/bert-base-NER` | ~420MB | Best accuracy/size balance |
+| `dslim/bert-base-NER` | ~420MB | Best accuracy/size balance (default) |
 | `dbmdz/bert-large-cased-finetuned-conll03-english` | ~1.2GB | Highest accuracy |
 | `Davlan/distilbert-base-multilingual-cased-ner-hrl` | ~500MB | Multilingual support |
+| `elastic/distilbert-base-cased-finetuned-conll03-english` | ~250MB | Smaller/faster |
+
+All models must be trained on CoNLL-2003 or similar NER datasets with BIO tagging scheme (B-PER, I-PER, B-ORG, I-ORG, B-LOC, I-LOC labels).
 
 ### Performance
 
@@ -473,25 +496,27 @@ See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed coverage report.
 
 ## Roadmap
 
-### v0.5.0 (Current)
+### v0.6.0 (Current)
 
 - [x] Complete Rust rewrite (replacing Go v0.1.0-v0.4.1)
-- [x] 36+ pattern-based entity types
-- [x] Full ONNX NER integration
-- [x] 4 anonymization strategies
+- [x] 36 pattern-based entity types with checksum validation
+- [x] Full ONNX NER integration (PERSON, ORGANIZATION, LOCATION)
+- [x] 4 anonymization strategies (replace, mask, hash, encrypt)
 - [x] REST API service
 - [x] CLI tool
 - [x] Multi-arch Docker images (AMD64/ARM64)
-- [x] Comprehensive test suite (194 tests, ~75% coverage)
+- [x] Full Docker image with embedded NER model (`ghcr.io/censgate/redact:full`)
+- [x] Comprehensive test suite (~75% coverage)
+- [x] Entity overlap resolution with specificity scoring
 
-### v0.6.0 (Planned)
+### v0.7.0 (Planned)
 
 - [ ] WebAssembly (WASM) browser support
 - [ ] Publish crates to crates.io
 - [ ] Enhanced documentation
 - [ ] Streaming API for large texts
 
-### v0.7.0 (Future)
+### v0.8.0 (Future)
 
 - [ ] Mobile FFI bindings (Swift/Kotlin)
 - [ ] GPU acceleration for NER

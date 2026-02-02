@@ -192,11 +192,12 @@ fn test_high_concurrency() {
     for i in 0..100 {
         let engine_clone = Arc::clone(&engine);
         let handle = thread::spawn(move || {
+            // Use valid SSN format (serial must be 0001-9999, not 0000)
             let text = format!(
                 "User {} - Email: user{}@example.com, SSN: 123-45-{:04}",
                 i,
                 i,
-                i % 10000
+                (i % 9999) + 1 // Ensures serial is 0001-9999, never 0000
             );
             engine_clone.analyze(&text, None).unwrap()
         });
@@ -371,8 +372,9 @@ fn test_concurrent_with_rayon() {
     use rayon::prelude::*;
 
     let engine = Arc::new(AnalyzerEngine::new());
+    // Use valid SSN format (serial must be 0001-9999, not 0000)
     let texts: Vec<String> = (0..100)
-        .map(|i| format!("Email: test{}@example.com, SSN: 123-45-{:04}", i, i))
+        .map(|i| format!("Email: test{}@example.com, SSN: 123-45-{:04}", i, (i % 9999) + 1))
         .collect();
 
     let results: Vec<_> = texts

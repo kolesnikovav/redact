@@ -1,11 +1,16 @@
-# Docker image with all entities enabled: pattern-based (36+) + ONNX NER (PERSON, ORG, LOCATION, DATE_TIME).
+# Docker image with all entities enabled: pattern-based (36 types) + ONNX NER (PERSON, ORG, LOCATION).
 #
 # Build:
 #   docker build -f Dockerfile.ner -t ghcr.io/censgate/redact:full .
 # Run:
 #   docker run -p 8080:8080 ghcr.io/censgate/redact:full
 #
-# The image bakes in NER_MODEL_PATH=/app/model/model.onnx so NER is enabled by default.
+# The image bakes in the NER model (~420MB) at /app/model/:
+#   - model.onnx       (ONNX model file)
+#   - tokenizer.json   (HuggingFace tokenizer)
+#
+# NER_MODEL_PATH=/app/model/model.onnx enables NER at startup.
+# Image size: ~500MB total (base ~50MB + model ~420MB + binary ~30MB)
 
 # -----------------------------------------------------------------------------
 # Stage 1: Export NER model to ONNX (dslim/bert-base-NER)

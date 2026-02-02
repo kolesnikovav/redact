@@ -9,7 +9,7 @@
 ///    ```bash
 ///    python scripts/export_ner_model.py \
 ///        --model dslim/bert-base-NER \
-///        --output tests/fixtures/models/
+///        --output tests/fixtures/models/bert-base-ner
 ///    ```
 ///
 /// 2. Run tests with the ignored flag:
@@ -25,8 +25,25 @@
 /// - `Davlan/distilbert-base-multilingual-cased-ner-hrl` (~500MB) - Multilingual
 ///
 /// For faster CI testing, use quantized or distilled models (~50-100MB).
+///
+/// # Model Directory Structure
+///
+/// The export script creates a directory with the following structure:
+/// ```
+/// models/bert-base-ner/
+/// ├── model.onnx          # ONNX model file (required)
+/// ├── tokenizer.json      # HuggingFace tokenizer (required)
+/// ├── config.json         # Model configuration with label mappings
+/// ├── special_tokens_map.json
+/// └── tokenizer_config.json
+/// ```
+///
+/// Only `model.onnx` and `tokenizer.json` are required for inference.
 use anyhow::Result;
-use redact_core::{AnalyzerEngine, EntityType, Recognizer};
+use redact_core::{
+    anonymizers::{AnonymizationStrategy, AnonymizerConfig},
+    AnalyzerEngine, EntityType, Recognizer,
+};
 use redact_ner::{NerConfig, NerRecognizer};
 use std::path::Path;
 use std::sync::Arc;
@@ -420,6 +437,160 @@ fn test_ner_edge_cases() -> Result<()> {
     // Very short text
     let _results = recognizer.analyze("Hi.", "en")?;
     // May or may not detect entities - just ensure it doesn't crash
+
+    Ok(())
+}
+
+/// Test full NER integration with redaction/anonymization
+///
+/// This test verifies the complete pipeline:
+/// 1. Load NER model
+/// 2. Detect Person/Organization/Location entities
+/// 3. Anonymize detected entities
+/// 4. Verify redaction in output
+#[test]
+#[ignore] // Requires model
+fn test_ner_with_redaction() -> Result<()> {
+    let model_dir = "tests/fixtures/models/bert-base-ner";
+
+    if !model_exists(model_dir) {
+        eprintln!("Model not found at: {}", model_dir);
+        eprintln!(
+            "Run: python scripts/export_ner_model.py --model dslim/bert-base-NER --output {}",
+            model_dir
+        );
+        return Ok(()); // Skip test if model not available
+    }
+
+    let model_path = format!("{}/model.onnx", model_dir);
+    let config = NerConfig {
+        model_path,
+        tokenizer_path: Some(format!("{}/tokenizer.json", model_dir)),
+        min_confidence: 0.7,
+        ..Default::default()
+    };
+
+    let ner = NerRecognizer::from_config(config)?;
+
+    // Create analyzer engine with NER
+    let mut engine = AnalyzerEngine::new();
+    engine
+        .recognizer_registry_mut()
+        .add_recognizer(Arc::new(ner));
+
+    // Test text with multiple entity types
+    let text = "John Doe works at Microsoft in Seattle. Contact him at john@example.com.";
+
+    // Step 1: Analyze and verify detection
+    let analysis = engine.analyze(text, None)?;
+
+    // Verify NER entities detected
+    let has_person = analysis
+        .detected_entities
+        .iter()
+        .any(|e| e.entity_type == EntityType::Person);
+    let has_org = analysis
+        .detected_entities
+        .iter()
+        .any(|e| e.entity_type == EntityType::Organization);
+    let has_location = analysis
+        .detected_entities
+        .iter()
+        .any(|e| e.entity_type == EntityType::Location);
+    let has_email = analysis
+        .detected_entities
+        .iter()
+        .any(|e| e.entity_type == EntityType::EmailAddress);
+
+    assert!(has_person, "Should detect PERSON (John Doe)");
+    assert!(has_org, "Should detect ORGANIZATION (Microsoft)");
+    assert!(has_location, "Should detect LOCATION (Seattle)");
+    assert!(has_email, "Should detect EMAIL (john@example.com)");
+
+    // Step 2: Anonymize with replace strategy
+    let anonymizer_config = AnonymizerConfig {
+        strategy: AnonymizationStrategy::Replace,
+        ..Default::default()
+    };
+
+    let anonymized = engine.anonymize(text, None, &anonymizer_config)?;
+
+    // Step 3: Verify redaction
+    assert!(
+        !anonymized.text.contains("John Doe"),
+        "Person name should be redacted. Got: {}",
+        anonymized.text
+    );
+    assert!(
+        !anonymized.text.contains("Microsoft"),
+        "Organization should be redacted. Got: {}",
+        anonymized.text
+    );
+    assert!(
+        !anonymized.text.contains("Seattle"),
+        "Location should be redacted. Got: {}",
+        anonymized.text
+    );
+    assert!(
+        !anonymized.text.contains("john@example.com"),
+        "Email should be redacted. Got: {}",
+        anonymized.text
+    );
+
+    // Verify placeholders are present
+    assert!(
+        anonymized.text.contains("[PERSON]"),
+        "Should have [PERSON] placeholder"
+    );
+    assert!(
+        anonymized.text.contains("[EMAIL_ADDRESS]"),
+        "Should have [EMAIL_ADDRESS] placeholder"
+    );
+
+    println!("Original: {}", text);
+    println!("Redacted: {}", anonymized.text);
+
+    Ok(())
+}
+
+/// Test NER detects all three main entity types
+#[test]
+#[ignore] // Requires model
+fn test_ner_entity_types() -> Result<()> {
+    let model_dir = "tests/fixtures/models/bert-base-ner";
+
+    if !model_exists(model_dir) {
+        return Ok(());
+    }
+
+    let model_path = format!("{}/model.onnx", model_dir);
+    let config = NerConfig {
+        model_path,
+        tokenizer_path: Some(format!("{}/tokenizer.json", model_dir)),
+        min_confidence: 0.5, // Lower threshold to catch all entities
+        ..Default::default()
+    };
+
+    let recognizer = NerRecognizer::from_config(config)?;
+
+    // Test cases for each entity type
+    let test_cases = vec![
+        ("Marie Curie won the Nobel Prize.", EntityType::Person),
+        ("Apple Inc. is based in Cupertino.", EntityType::Organization),
+        ("The Eiffel Tower is in Paris.", EntityType::Location),
+    ];
+
+    for (text, expected_type) in test_cases {
+        let results = recognizer.analyze(text, "en")?;
+
+        let found = results.iter().any(|r| r.entity_type == expected_type);
+
+        assert!(
+            found,
+            "Should detect {:?} in: '{}'\nDetected: {:?}",
+            expected_type, text, results
+        );
+    }
 
     Ok(())
 }

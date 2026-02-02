@@ -139,6 +139,118 @@ impl EntityType {
                 | EntityType::MedicalLicense
         )
     }
+
+    /// Get the specificity score for this entity type.
+    /// Higher scores indicate more specific patterns that should take precedence
+    /// over generic patterns when there's an overlap.
+    ///
+    /// Specificity tiers:
+    /// - 100: Highly specific with validation (credit cards, SSN, checksummed IDs)
+    /// - 80: Country/region-specific identifiers
+    /// - 60: Domain-specific but generic format (medical, crypto)
+    /// - 40: Generic identifiers (email, phone, URL)
+    /// - 20: Very generic patterns prone to false positives (dates, ages, hashes)
+    pub fn specificity_score(&self) -> u8 {
+        match self {
+            // Highly specific - validated formats or unique patterns
+            EntityType::CreditCard => 100,
+            EntityType::UsSsn => 100,
+            EntityType::IbanCode | EntityType::Iban => 95,
+            EntityType::BtcAddress => 95,
+            EntityType::EthAddress => 95,
+            EntityType::Guid => 95,
+            EntityType::MacAddress => 90,
+
+            // Country-specific identifiers
+            EntityType::UkNino => 85,
+            EntityType::UkDriverLicense => 85,
+            EntityType::UkNhs => 80,
+            EntityType::UkPassportNumber => 75,
+            EntityType::UkCompanyNumber => 75,
+            EntityType::UkSortCode => 70,
+            EntityType::UkPostcode => 70,
+            EntityType::UkMobileNumber => 70,
+            EntityType::UkPhoneNumber => 65,
+            EntityType::UsDriverLicense => 70,
+            EntityType::UsPassport => 70,
+
+            // Domain-specific
+            EntityType::MedicalLicense => 75,
+            EntityType::MedicalRecordNumber => 70,
+            EntityType::CryptoWallet => 70,
+            EntityType::Isbn => 70,
+            EntityType::PassportNumber => 60,
+
+            // Generic but well-defined
+            EntityType::EmailAddress => 80,
+            EntityType::Url => 75,
+            EntityType::DomainName => 60,
+            EntityType::IpAddress => 70,
+            EntityType::PhoneNumber => 50,
+            EntityType::PoBox => 60,
+
+            // NER-based (high quality when available)
+            EntityType::Person => 85,
+            EntityType::Organization => 85,
+            EntityType::Location => 85,
+
+            // Generic/prone to false positives
+            EntityType::UsBankNumber => 40,
+            EntityType::UsZipCode => 30,
+            EntityType::Age => 25,
+            EntityType::DateTime => 20,
+            EntityType::Md5Hash => 30,
+            EntityType::Sha1Hash => 30,
+            EntityType::Sha256Hash => 35,
+
+            // Custom types default to medium specificity
+            EntityType::Custom(_) => 50,
+        }
+    }
+
+    /// Check if this entity type should be suppressed when a more specific
+    /// entity type is detected at the same location.
+    ///
+    /// For example, if we detect both a UK mobile number and a generic phone number
+    /// at the same position, we should suppress the generic phone detection.
+    pub fn is_suppressed_by(&self, other: &EntityType) -> bool {
+        // Generic phone suppressed by country-specific phone types
+        if *self == EntityType::PhoneNumber {
+            return matches!(
+                other,
+                EntityType::UkPhoneNumber | EntityType::UkMobileNumber
+            );
+        }
+
+        // Generic passport suppressed by country-specific
+        if *self == EntityType::PassportNumber {
+            return matches!(
+                other,
+                EntityType::UsPassport | EntityType::UkPassportNumber
+            );
+        }
+
+        // Generic crypto wallet suppressed by specific addresses
+        if *self == EntityType::CryptoWallet {
+            return matches!(other, EntityType::BtcAddress | EntityType::EthAddress);
+        }
+
+        // IBAN suppressed by IBAN_CODE (they're the same)
+        if *self == EntityType::Iban {
+            return *other == EntityType::IbanCode;
+        }
+
+        // Hash types: longer hashes suppress shorter ones at same position
+        // (SHA256 contains valid MD5 and SHA1 patterns)
+        if *self == EntityType::Md5Hash {
+            return matches!(other, EntityType::Sha1Hash | EntityType::Sha256Hash);
+        }
+        if *self == EntityType::Sha1Hash {
+            return *other == EntityType::Sha256Hash;
+        }
+
+        false
+    }
 }
 
 impl fmt::Display for EntityType {
