@@ -194,7 +194,10 @@ pub struct TokenInfo {
 pub struct HealthResponse {
     pub status: String,
     pub version: String,
+    /// Number of recognizer instances (e.g. pattern, NER)
     pub recognizers: usize,
+    /// Number of entity types supported across all recognizers (e.g. 36+)
+    pub entity_types: usize,
 }
 
 /// Error response

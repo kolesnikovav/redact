@@ -118,6 +118,28 @@ docker run -p 8080:8080 ghcr.io/censgate/redact:latest
 
 The image uses a minimal [distroless](https://github.com/GoogleContainerTools/distroless) base (~37MB) optimized for ARM64 (AWS Graviton, Apple Silicon) and AMD64.
 
+#### Full image (pattern + ONNX NER)
+
+To enable **all entities** including ONNX NER (PERSON, ORGANIZATION, LOCATION, DATE_TIME), use the full image. It is **published on every release** to GHCR with tags `full`, `X.Y.Z-full`, etc.:
+
+```bash
+docker pull ghcr.io/censgate/redact:full
+docker run -p 8080:8080 ghcr.io/censgate/redact:full
+```
+
+To build locally instead:
+
+```bash
+docker build -f Dockerfile.ner -t ghcr.io/censgate/redact:full .
+docker run -p 8080:8080 ghcr.io/censgate/redact:full
+```
+
+The full image bakes in a pre-exported NER model (`dslim/bert-base-NER`) and sets `NER_MODEL_PATH=/app/model/model.onnx`, so NER is enabled at startup. To enable NER with the default image, mount a directory containing `model.onnx` and `tokenizer.json` and set:
+
+```bash
+docker run -p 8080:8080 -v /path/to/model:/app/model -e NER_MODEL_PATH=/app/model/model.onnx ghcr.io/censgate/redact:latest
+```
+
 ### Rust Version
 
 This project requires Rust **1.93.0**. Use [Mise](https://mise.jdx.dev/) or [ASDF](https://asdf-vm.com/) for version management:

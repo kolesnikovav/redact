@@ -60,9 +60,8 @@ fn test_url() {
 
 #[test]
 fn test_domain_name() {
-    // Note: Pattern needs to be implemented separately from URL
-    // Currently domain names are detected as part of URLs
-    // Skipping standalone domain detection for now
+    assert_entity_detected("Visit example.com for info", EntityType::DomainName, 0.7);
+    assert_entity_detected("Host: subdomain.example.org", EntityType::DomainName, 0.7);
 }
 
 // ============================================================================

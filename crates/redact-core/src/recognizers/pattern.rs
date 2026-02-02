@@ -127,6 +127,13 @@ impl PatternRecognizer {
             0.7,
         );
 
+        // Domain name (standalone, without protocol - avoid overlapping URL)
+        let _ = self.add_pattern(
+            EntityType::DomainName,
+            r"\b(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}\b",
+            0.7,
+        );
+
         // GUID/UUID
         let _ = self.add_pattern(
             EntityType::Guid,
@@ -300,6 +307,7 @@ impl Recognizer for PatternRecognizer {
                 EntityType::UsSsn,
                 EntityType::IpAddress,
                 EntityType::Url,
+                EntityType::DomainName,
                 EntityType::Guid,
                 EntityType::MacAddress,
                 EntityType::UkNhs,
@@ -312,6 +320,12 @@ impl Recognizer for PatternRecognizer {
                 EntityType::Md5Hash,
                 EntityType::Sha1Hash,
                 EntityType::Sha256Hash,
+                EntityType::UsZipCode,
+                EntityType::PoBox,
+                EntityType::Isbn,
+                EntityType::PassportNumber,
+                EntityType::MedicalRecordNumber,
+                EntityType::Age,
                 EntityType::DateTime,
             ];
         }
@@ -372,10 +386,13 @@ mod tests {
         let text = "Contact me at john.doe@example.com for details";
         let results = recognizer.analyze(text, "en").unwrap();
 
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].entity_type, EntityType::EmailAddress);
-        assert_eq!(results[0].text, Some("john.doe@example.com".to_string()));
-        assert!(results[0].score >= 0.8);
+        let email_results: Vec<_> = results
+            .iter()
+            .filter(|r| r.entity_type == EntityType::EmailAddress)
+            .collect();
+        assert_eq!(email_results.len(), 1);
+        assert_eq!(email_results[0].text, Some("john.doe@example.com".to_string()));
+        assert!(email_results[0].score >= 0.8);
     }
 
     #[test]

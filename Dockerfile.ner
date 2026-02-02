@@ -1,0 +1,107 @@
+# Docker image with all entities enabled: pattern-based (36+) + ONNX NER (PERSON, ORG, LOCATION, DATE_TIME).
+#
+# Build:
+#   docker build -f Dockerfile.ner -t ghcr.io/censgate/redact:full .
+# Run:
+#   docker run -p 8080:8080 ghcr.io/censgate/redact:full
+#
+# The image bakes in NER_MODEL_PATH=/app/model/model.onnx so NER is enabled by default.
+
+# -----------------------------------------------------------------------------
+# Stage 1: Export NER model to ONNX (dslim/bert-base-NER)
+# -----------------------------------------------------------------------------
+FROM python:3.11-slim AS model-exporter
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /export
+
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir "transformers>=4.30" "torch>=2.0" "optimum[onnxruntime]"
+
+COPY scripts/export_ner_model.py ./
+
+RUN python export_ner_model.py --model dslim/bert-base-NER --output /out/models
+
+# -----------------------------------------------------------------------------
+# Stage 2: Build redact-api binary
+# -----------------------------------------------------------------------------
+FROM --platform=$BUILDPLATFORM rust:1.93-slim AS builder
+
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+ARG TARGETARCH
+
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    g++ \
+    cmake \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN if [ "$TARGETARCH" = "arm64" ] && [ "$BUILDPLATFORM" != "linux/arm64" ]; then \
+        apt-get update && apt-get install -y \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            libc6-dev-arm64-cross \
+        && rm -rf /var/lib/apt/lists/* \
+        && rustup target add aarch64-unknown-linux-gnu; \
+    elif [ "$TARGETARCH" = "amd64" ] && [ "$BUILDPLATFORM" != "linux/amd64" ]; then \
+        apt-get update && apt-get install -y \
+            gcc-x86-64-linux-gnu \
+            g++-x86-64-linux-gnu \
+            libc6-dev-amd64-cross \
+        && rm -rf /var/lib/apt/lists/* \
+        && rustup target add x86_64-unknown-linux-gnu; \
+    fi
+
+WORKDIR /app
+
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+
+ENV CARGO_PROFILE_RELEASE_LTO=thin
+ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+
+RUN case "$TARGETARCH" in \
+        arm64) \
+            if [ "$BUILDPLATFORM" = "linux/arm64" ]; then \
+                RUSTFLAGS="-C target-cpu=native" cargo build --release --package redact-api; \
+            else \
+                RUSTFLAGS="-C linker=aarch64-linux-gnu-gcc -C target-cpu=neoverse-n1" \
+                cargo build --release --package redact-api --target aarch64-unknown-linux-gnu \
+                && cp target/aarch64-unknown-linux-gnu/release/redact-api target/release/; \
+            fi ;; \
+        amd64) \
+            if [ "$BUILDPLATFORM" = "linux/amd64" ]; then \
+                RUSTFLAGS="-C target-cpu=native" cargo build --release --package redact-api; \
+            else \
+                RUSTFLAGS="-C linker=x86_64-linux-gnu-gcc -C target-cpu=x86-64-v3" \
+                cargo build --release --package redact-api --target x86_64-unknown-linux-gnu \
+                && cp target/x86_64-unknown-linux-gnu/release/redact-api target/release/; \
+            fi ;; \
+        *) cargo build --release --package redact-api ;; \
+    esac
+
+# -----------------------------------------------------------------------------
+# Stage 3: Runtime with binary + NER model
+# -----------------------------------------------------------------------------
+FROM gcr.io/distroless/cc-debian12
+
+WORKDIR /app
+
+# NER model and tokenizer (model.onnx + tokenizer.json; NER loads from NER_MODEL_PATH)
+COPY --from=model-exporter /out/models/ /app/model/
+
+COPY --from=builder /app/target/release/redact-api /usr/local/bin/redact-api
+
+EXPOSE 8080
+
+USER nonroot:nonroot
+
+# Enable NER: server loads ONNX model from this path at startup
+ENV NER_MODEL_PATH=/app/model/model.onnx
+
+ENTRYPOINT ["/usr/local/bin/redact-api"]

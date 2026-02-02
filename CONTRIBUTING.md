@@ -202,7 +202,7 @@ This project follows [Semantic Versioning](https://semver.org/):
    - Build binaries for all platforms
    - Publish crates to crates.io
    - Create GitHub release
-   - Build and push Docker image
+   - Build and push Docker images: default (`Dockerfile`) as `:latest`, `:X.Y.Z`, etc.; full image (`Dockerfile.ner`, pattern + ONNX NER) as `:full`, `:X.Y.Z-full`, etc.
 
 ## Project Structure
 
