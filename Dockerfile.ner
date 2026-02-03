@@ -23,16 +23,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /fetch
-# Match version compatible with ort 2.x; use CPU-only Linux build (no GPU)
+# ort 2.0.0-rc.11 requires ONNX Runtime >= 1.23.x; use CPU-only Linux build (no GPU)
+ARG ONNX_VERSION=1.23.2
 RUN case "$TARGETARCH" in \
     amd64) \
-        wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.18.1/onnxruntime-linux-x64-1.18.1.tgz -O onnx.tgz \
+        wget -q "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-linux-x64-${ONNX_VERSION}.tgz" -O onnx.tgz \
         && tar xzf onnx.tgz \
-        && cp onnxruntime-linux-x64-1.18.1/lib/libonnxruntime.so.1.18.1 /libonnxruntime.so ;; \
+        && cp "onnxruntime-linux-x64-${ONNX_VERSION}/lib/libonnxruntime.so.${ONNX_VERSION}" /libonnxruntime.so ;; \
     arm64) \
-        wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.18.1/onnxruntime-linux-aarch64-1.18.1.tgz -O onnx.tgz \
+        wget -q "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-linux-aarch64-${ONNX_VERSION}.tgz" -O onnx.tgz \
         && tar xzf onnx.tgz \
-        && cp onnxruntime-linux-aarch64-1.18.1/lib/libonnxruntime.so.1.18.1 /libonnxruntime.so ;; \
+        && cp "onnxruntime-linux-aarch64-${ONNX_VERSION}/lib/libonnxruntime.so.${ONNX_VERSION}" /libonnxruntime.so ;; \
     *) echo "Unsupported TARGETARCH: $TARGETARCH" && exit 1 ;; \
     esac
 
