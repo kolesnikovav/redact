@@ -112,6 +112,10 @@ pub struct NerRecognizer {
     config: NerConfig,
     tokenizer: Option<TokenizerWrapper>,
     session: Option<Mutex<Session>>,
+    /// Whether the ONNX model accepts `token_type_ids` as an input.
+    /// BERT-family models require it; DistilBERT and others do not.
+    /// Determined at model-load time by inspecting `Session::inputs()`.
+    needs_token_type_ids: bool,
 }
 
 impl std::fmt::Debug for NerRecognizer {
@@ -120,6 +124,7 @@ impl std::fmt::Debug for NerRecognizer {
             .field("config", &self.config)
             .field("tokenizer", &self.tokenizer)
             .field("session", &self.session.as_ref().map(|_| "Session"))
+            .field("needs_token_type_ids", &self.needs_token_type_ids)
             .finish()
     }
 }
@@ -201,8 +206,8 @@ impl NerRecognizer {
                 }
                 map
             } else {
-                // Build label_mappings from id2label if no explicit mappings
-                let mut map = defaults.label_mappings.clone();
+                // Build label_mappings purely from id2label (no stale defaults).
+                let mut map = HashMap::new();
                 for label in id2label.values() {
                     if label == "O" {
                         continue;
@@ -221,7 +226,9 @@ impl NerRecognizer {
                         "DATE" | "TIME" | "DATETIME" => {
                             map.insert(label.clone(), EntityType::DateTime);
                         }
-                        _ => {}
+                        _ => {
+                            debug!("Unmapped NER label: {} — no EntityType match", label);
+                        }
                     }
                 }
                 map
@@ -341,6 +348,22 @@ impl NerRecognizer {
             None
         };
 
+        // Inspect model inputs at construction time to determine whether the
+        // model expects token_type_ids (BERT-family) or not (DistilBERT, etc.).
+        let needs_token_type_ids = session.as_ref().map_or(false, |s| {
+            let guard = s.lock().expect("session lock poisoned during init");
+            let has_it = guard
+                .inputs()
+                .iter()
+                .any(|input| input.name() == "token_type_ids");
+            if has_it {
+                debug!("Model declares token_type_ids input — will include in inference");
+            } else {
+                debug!("Model does not declare token_type_ids — omitting from inference");
+            }
+            has_it
+        });
+
         let is_available = tokenizer.is_some() && session.is_some();
         if is_available {
             info!("✓ NER is fully operational with ONNX Runtime");
@@ -358,6 +381,7 @@ impl NerRecognizer {
             config,
             tokenizer,
             session,
+            needs_token_type_ids,
         })
     }
 
@@ -391,20 +415,24 @@ impl NerRecognizer {
         let seq_len = input_ids.len();
         let input_ids_i64: Vec<i64> = input_ids.iter().map(|&x| x as i64).collect();
         let attention_mask_i64: Vec<i64> = attention_mask.iter().map(|&x| x as i64).collect();
-        // BERT models require token_type_ids (segment IDs); all zeros for single-sentence NER
-        let token_type_ids_i64: Vec<i64> = vec![0i64; seq_len];
 
-        // Create Value objects using shape + data tuple approach
         let input_ids_value = Value::from_array(([1, seq_len], input_ids_i64))?;
         let attention_mask_value = Value::from_array(([1, seq_len], attention_mask_i64))?;
-        let token_type_ids_value = Value::from_array(([1, seq_len], token_type_ids_i64))?;
 
-        // Run inference with all three inputs (BERT models require token_type_ids)
-        let outputs = session.run(ort::inputs![
-            "input_ids" => input_ids_value,
-            "attention_mask" => attention_mask_value,
-            "token_type_ids" => token_type_ids_value,
-        ])?;
+        // Build inputs list — only include token_type_ids when the model expects it
+        // (BERT-family needs it; DistilBERT and others do not).
+        let mut inputs: Vec<(std::borrow::Cow<'_, str>, Value)> = vec![
+            ("input_ids".into(), input_ids_value.into()),
+            ("attention_mask".into(), attention_mask_value.into()),
+        ];
+
+        if self.needs_token_type_ids {
+            let token_type_ids_i64: Vec<i64> = vec![0i64; seq_len];
+            let token_type_ids_value = Value::from_array(([1, seq_len], token_type_ids_i64))?;
+            inputs.push(("token_type_ids".into(), token_type_ids_value.into()));
+        }
+
+        let outputs = session.run(inputs)?;
 
         // Extract logits - shape should be [1, seq_len, num_labels]
         let (shape, logits_data) = outputs["logits"].try_extract_tensor::<f32>()?;
@@ -612,6 +640,7 @@ impl Recognizer for NerRecognizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
 
     #[test]
     fn test_default_config() {
@@ -648,5 +677,159 @@ mod tests {
         // Should return empty results
         let results = recognizer.analyze("John Doe", "en").unwrap();
         assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn test_recognizer_without_model_has_no_token_type_ids() {
+        let config = NerConfig::default();
+        let recognizer = NerRecognizer::from_config(config).unwrap();
+
+        // No session loaded → flag defaults to false
+        assert!(!recognizer.needs_token_type_ids);
+    }
+
+    // ---- load_config_from_file tests ----
+
+    /// Helper: write `contents` to a temp file and return its path.
+    fn write_temp_config(contents: &str) -> tempfile::NamedTempFile {
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        f.write_all(contents.as_bytes()).unwrap();
+        f.flush().unwrap();
+        f
+    }
+
+    #[test]
+    fn test_load_config_valid_with_both_id2label_and_label_mappings() {
+        let json = r#"{
+            "id2label": {
+                "0": "O",
+                "1": "B-MISC",
+                "2": "I-MISC",
+                "3": "B-PER",
+                "4": "I-PER",
+                "5": "B-ORG",
+                "6": "I-ORG",
+                "7": "B-LOC",
+                "8": "I-LOC"
+            },
+            "label_mappings": {
+                "B-PER": "Person",
+                "I-PER": "Person",
+                "B-ORG": "Organization",
+                "I-ORG": "Organization",
+                "B-LOC": "Location",
+                "I-LOC": "Location"
+            },
+            "min_confidence": 0.8,
+            "max_seq_length": 256,
+            "tokenizer_path": "/build/time/tokenizer.json"
+        }"#;
+
+        let f = write_temp_config(json);
+        let cfg =
+            NerRecognizer::load_config_from_file(f.path(), "/runtime/model.onnx").unwrap();
+
+        // id2label parsed correctly
+        assert_eq!(cfg.id2label.len(), 9);
+        assert_eq!(cfg.id2label[&3], "B-PER");
+        assert_eq!(cfg.id2label[&5], "B-ORG");
+
+        // label_mappings parsed correctly (PascalCase → EntityType)
+        assert_eq!(cfg.label_mappings.len(), 6);
+        assert_eq!(cfg.label_mappings["B-PER"], EntityType::Person);
+        assert_eq!(cfg.label_mappings["B-ORG"], EntityType::Organization);
+        assert_eq!(cfg.label_mappings["B-LOC"], EntityType::Location);
+
+        // Scalars honoured
+        assert_eq!(cfg.min_confidence, 0.8);
+        assert_eq!(cfg.max_seq_length, 256);
+
+        // model_path overridden to runtime value
+        assert_eq!(cfg.model_path, "/runtime/model.onnx");
+
+        // tokenizer_path always suppressed regardless of config.json content
+        assert!(cfg.tokenizer_path.is_none());
+    }
+
+    #[test]
+    fn test_load_config_fallback_derives_label_mappings_from_id2label() {
+        // config.json has id2label but no label_mappings → derived path
+        let json = r#"{
+            "id2label": {
+                "0": "O",
+                "1": "B-MISC",
+                "2": "I-MISC",
+                "3": "B-PER",
+                "4": "I-PER",
+                "5": "B-ORG",
+                "6": "I-ORG",
+                "7": "B-LOC",
+                "8": "I-LOC"
+            }
+        }"#;
+
+        let f = write_temp_config(json);
+        let cfg = NerRecognizer::load_config_from_file(f.path(), "/m.onnx").unwrap();
+
+        // Derived mappings should include PER, ORG, LOC but NOT MISC or stale defaults
+        assert_eq!(
+            cfg.label_mappings.get("B-PER"),
+            Some(&EntityType::Person)
+        );
+        assert_eq!(
+            cfg.label_mappings.get("I-PER"),
+            Some(&EntityType::Person)
+        );
+        assert_eq!(
+            cfg.label_mappings.get("B-ORG"),
+            Some(&EntityType::Organization)
+        );
+        assert_eq!(
+            cfg.label_mappings.get("B-LOC"),
+            Some(&EntityType::Location)
+        );
+
+        // MISC labels should NOT appear (no EntityType mapping exists)
+        assert!(cfg.label_mappings.get("B-MISC").is_none());
+        assert!(cfg.label_mappings.get("I-MISC").is_none());
+
+        // No stale defaults: B-DATE / I-DATE should NOT leak in because
+        // they are not present in the provided id2label
+        assert!(cfg.label_mappings.get("B-DATE").is_none());
+        assert!(cfg.label_mappings.get("I-DATE").is_none());
+    }
+
+    #[test]
+    fn test_load_config_tokenizer_path_always_none() {
+        // Even when config.json explicitly sets tokenizer_path, the loader
+        // must suppress it (build-time path is stale at runtime).
+        let json = r#"{
+            "tokenizer_path": "/out/models/tokenizer.json",
+            "id2label": { "0": "O", "1": "B-PER" }
+        }"#;
+
+        let f = write_temp_config(json);
+        let cfg = NerRecognizer::load_config_from_file(f.path(), "/m.onnx").unwrap();
+        assert!(cfg.tokenizer_path.is_none());
+    }
+
+    #[test]
+    fn test_load_config_malformed_json_returns_err() {
+        let f = write_temp_config("{ this is not valid json }}}");
+        let result = NerRecognizer::load_config_from_file(f.path(), "/m.onnx");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_config_empty_json_uses_defaults() {
+        // An empty JSON object should fall back to defaults for every field
+        let f = write_temp_config("{}");
+        let cfg = NerRecognizer::load_config_from_file(f.path(), "/m.onnx").unwrap();
+
+        let defaults = NerConfig::default();
+        assert_eq!(cfg.min_confidence, defaults.min_confidence);
+        assert_eq!(cfg.max_seq_length, defaults.max_seq_length);
+        // id2label falls back to defaults (no "id2label" key in JSON)
+        assert_eq!(cfg.id2label.len(), defaults.id2label.len());
     }
 }

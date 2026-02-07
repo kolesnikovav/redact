@@ -24,6 +24,7 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
+tempfile = "3"
 
 [lib]
 name = "redact_ner"
