@@ -350,7 +350,7 @@ impl NerRecognizer {
 
         // Inspect model inputs at construction time to determine whether the
         // model expects token_type_ids (BERT-family) or not (DistilBERT, etc.).
-        let needs_token_type_ids = session.as_ref().map_or(false, |s| {
+        let needs_token_type_ids = session.as_ref().is_some_and(|s| {
             let guard = s.lock().expect("session lock poisoned during init");
             let has_it = guard
                 .inputs()
@@ -726,8 +726,7 @@ mod tests {
         }"#;
 
         let f = write_temp_config(json);
-        let cfg =
-            NerRecognizer::load_config_from_file(f.path(), "/runtime/model.onnx").unwrap();
+        let cfg = NerRecognizer::load_config_from_file(f.path(), "/runtime/model.onnx").unwrap();
 
         // id2label parsed correctly
         assert_eq!(cfg.id2label.len(), 9);
@@ -772,22 +771,13 @@ mod tests {
         let cfg = NerRecognizer::load_config_from_file(f.path(), "/m.onnx").unwrap();
 
         // Derived mappings should include PER, ORG, LOC but NOT MISC or stale defaults
-        assert_eq!(
-            cfg.label_mappings.get("B-PER"),
-            Some(&EntityType::Person)
-        );
-        assert_eq!(
-            cfg.label_mappings.get("I-PER"),
-            Some(&EntityType::Person)
-        );
+        assert_eq!(cfg.label_mappings.get("B-PER"), Some(&EntityType::Person));
+        assert_eq!(cfg.label_mappings.get("I-PER"), Some(&EntityType::Person));
         assert_eq!(
             cfg.label_mappings.get("B-ORG"),
             Some(&EntityType::Organization)
         );
-        assert_eq!(
-            cfg.label_mappings.get("B-LOC"),
-            Some(&EntityType::Location)
-        );
+        assert_eq!(cfg.label_mappings.get("B-LOC"), Some(&EntityType::Location));
 
         // MISC labels should NOT appear (no EntityType mapping exists)
         assert!(cfg.label_mappings.get("B-MISC").is_none());
