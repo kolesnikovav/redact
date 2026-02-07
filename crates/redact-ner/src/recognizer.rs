@@ -207,7 +207,7 @@ impl NerRecognizer {
                     if label == "O" {
                         continue;
                     }
-                    let entity_type = label.split('-').last().unwrap_or(label);
+                    let entity_type = label.split('-').next_back().unwrap_or(label);
                     match entity_type {
                         "PER" | "PERSON" => {
                             map.insert(label.clone(), EntityType::Person);
