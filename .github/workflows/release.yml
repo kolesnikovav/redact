@@ -248,6 +248,70 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}-full
             type=semver,pattern={{major}}-full
 
+      - name: Build full image for smoke test (amd64 only)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.ner
+          load: true
+          tags: redact-full:smoke-test
+          build-args: |
+            NER_BASE=ghcr.io/${{ github.repository }}-ner-base:v1
+          cache-from: type=gha,scope=ner-full
+          cache-to: type=gha,mode=max,scope=ner-full
+
+      - name: Smoke test NER image
+        run: |
+          echo "--- Starting smoke test container ---"
+          docker run -d --name smoke-test -p 8080:8080 redact-full:smoke-test
+          echo "Waiting for server to start..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+              echo "Server ready after ${i}s"
+              break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "ERROR: Server failed to start within 30s"
+              docker logs smoke-test
+              exit 1
+            fi
+            sleep 1
+          done
+
+          echo "--- Health check ---"
+          HEALTH=$(curl -sf http://localhost:8080/health)
+          echo "$HEALTH" | python3 -m json.tool
+          RECOGNIZERS=$(echo "$HEALTH" | python3 -c "import sys,json; print(json.load(sys.stdin).get('recognizers',0))")
+          if [ "$RECOGNIZERS" -lt 2 ]; then
+            echo "ERROR: Expected at least 2 recognizers (pattern + NER), got $RECOGNIZERS"
+            docker rm -f smoke-test
+            exit 1
+          fi
+          echo "OK: $RECOGNIZERS recognizers"
+
+          echo "--- NER entity detection ---"
+          RESULT=$(curl -sf http://localhost:8080/api/v1/analyze \
+            -H 'Content-Type: application/json' \
+            -d '{"text": "John Smith works at Microsoft in Seattle"}')
+          echo "$RESULT" | python3 -m json.tool
+          NER_FOUND=$(echo "$RESULT" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          results = data.get('results', [])
+          types = {e['entity_type'] for e in results}
+          ner_types = types & {'PERSON', 'ORGANIZATION', 'LOCATION'}
+          print(len(ner_types))
+          ")
+          if [ "$NER_FOUND" -lt 2 ]; then
+            echo "ERROR: Expected at least 2 NER entity types (PERSON/ORG/LOC), found $NER_FOUND"
+            docker rm -f smoke-test
+            exit 1
+          fi
+          echo "OK: $NER_FOUND NER entity types detected"
+
+          docker rm -f smoke-test
+          echo "--- Smoke test passed ---"
+
       - name: Build and push full image (pattern + ONNX NER)
         uses: docker/build-push-action@v5
         with:
@@ -256,6 +320,8 @@ jobs:
           push: true
           tags: ${{ steps.meta-full.outputs.tags }}
           labels: ${{ steps.meta-full.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          build-args: |
+            NER_BASE=ghcr.io/${{ github.repository }}-ner-base:v1
+          cache-from: type=gha,scope=ner-full
+          cache-to: type=gha,mode=max,scope=ner-full
           platforms: linux/amd64,linux/arm64

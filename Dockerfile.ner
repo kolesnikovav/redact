@@ -12,51 +12,27 @@
 # NER_MODEL_PATH=/app/model/model.onnx enables NER at startup.
 # ORT_DYLIB_PATH points to libonnxruntime.so (ort crate load-dynamic requires it at runtime).
 # Image size: ~500MB total (base ~50MB + model ~420MB + binary ~30MB + ONNX Runtime ~30MB)
+#
+# Architecture:
+#   The NER model and ONNX Runtime are pre-built into a separate base image
+#   (ghcr.io/censgate/redact-ner-base) that changes only when the model or
+#   ONNX Runtime version is bumped. This Dockerfile only builds the Rust binary
+#   and layers it on top, keeping release builds fast (~5 min vs 40-100+ min).
+#
+# Local dev (without pre-built base):
+#   docker build -f Dockerfile.ner-base -t ghcr.io/censgate/redact-ner-base:v1 .
+#   docker build -f Dockerfile.ner -t ghcr.io/censgate/redact:full .
 
 # -----------------------------------------------------------------------------
-# Stage 0: ONNX Runtime shared library (ort load-dynamic requires it at runtime)
+# NER base image: pre-built ONNX Runtime + NER model (built asynchronously)
+# Override with --build-arg for local dev or testing a new model.
 # -----------------------------------------------------------------------------
-FROM debian:bookworm-slim AS onnx-runtime
-ARG TARGETARCH
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-WORKDIR /fetch
-# ort 2.0.0-rc.11 requires ONNX Runtime >= 1.23.x; use CPU-only Linux build (no GPU)
-ARG ONNX_VERSION=1.23.2
-RUN case "$TARGETARCH" in \
-    amd64) \
-        wget -q "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-linux-x64-${ONNX_VERSION}.tgz" -O onnx.tgz \
-        && tar xzf onnx.tgz \
-        && cp "onnxruntime-linux-x64-${ONNX_VERSION}/lib/libonnxruntime.so.${ONNX_VERSION}" /libonnxruntime.so ;; \
-    arm64) \
-        wget -q "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-linux-aarch64-${ONNX_VERSION}.tgz" -O onnx.tgz \
-        && tar xzf onnx.tgz \
-        && cp "onnxruntime-linux-aarch64-${ONNX_VERSION}/lib/libonnxruntime.so.${ONNX_VERSION}" /libonnxruntime.so ;; \
-    *) echo "Unsupported TARGETARCH: $TARGETARCH" && exit 1 ;; \
-    esac
+ARG NER_BASE=ghcr.io/censgate/redact-ner-base:v1
+
+FROM ${NER_BASE} AS ner-base
 
 # -----------------------------------------------------------------------------
-# Stage 1: Export NER model to ONNX (dslim/bert-base-NER)
-# -----------------------------------------------------------------------------
-FROM python:3.11-slim AS model-exporter
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /export
-
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir "transformers>=4.30" "torch>=2.0" "optimum[onnxruntime]"
-
-COPY scripts/export_ner_model.py ./
-
-RUN python export_ner_model.py --model dslim/bert-base-NER --output /out/models
-
-# -----------------------------------------------------------------------------
-# Stage 2: Build redact-api binary
+# Stage 1: Build redact-api binary
 # -----------------------------------------------------------------------------
 FROM --platform=$BUILDPLATFORM rust:1.93-slim AS builder
 
@@ -116,17 +92,17 @@ RUN case "$TARGETARCH" in \
     esac
 
 # -----------------------------------------------------------------------------
-# Stage 3: Runtime with binary + NER model + ONNX Runtime shared library
+# Stage 2: Runtime with binary + NER model + ONNX Runtime shared library
 # -----------------------------------------------------------------------------
 FROM gcr.io/distroless/cc-debian12
 
 WORKDIR /app
 
 # ONNX Runtime shared library (ort load-dynamic loads this at runtime)
-COPY --from=onnx-runtime /libonnxruntime.so /app/lib/libonnxruntime.so
+COPY --from=ner-base /app/lib/libonnxruntime.so /app/lib/libonnxruntime.so
 
 # NER model and tokenizer (model.onnx + tokenizer.json; NER loads from NER_MODEL_PATH)
-COPY --from=model-exporter /out/models/ /app/model/
+COPY --from=ner-base /app/model/ /app/model/
 
 COPY --from=builder /app/target/release/redact-api /usr/local/bin/redact-api
 
