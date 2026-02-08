@@ -1,7 +1,8 @@
 name: NER Base Image
 
 on:
-  # Manual trigger for version bumps
+  # Manual trigger only -- run when ONNX Runtime version, NER model, or
+  # export script changes. Not triggered by merges to main.
   workflow_dispatch:
     inputs:
       version:
@@ -12,12 +13,6 @@ on:
         description: 'HuggingFace NER model name'
         required: true
         default: 'dslim/bert-base-NER'
-  # Auto-trigger when NER artifacts change on main
-  push:
-    branches: [main]
-    paths:
-      - 'Dockerfile.ner-base'
-      - 'scripts/export_ner_model.py'
 
 permissions:
   packages: write
@@ -58,28 +53,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Determine version tag
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
-            echo "ner_model=${{ inputs.ner_model }}" >> "$GITHUB_OUTPUT"
-          else
-            # Auto-trigger on push: use v1 as default version
-            echo "tag=v1" >> "$GITHUB_OUTPUT"
-            echo "ner_model=dslim/bert-base-NER" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build and push (${{ matrix.arch }})
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile.ner-base
           push: true
-          tags: ${{ env.BASE_IMAGE }}:${{ steps.version.outputs.tag }}-${{ matrix.arch }}
+          tags: ${{ env.BASE_IMAGE }}:${{ inputs.version }}-${{ matrix.arch }}
           platforms: ${{ matrix.platform }}
           build-args: |
-            NER_MODEL=${{ steps.version.outputs.ner_model }}
+            NER_MODEL=${{ inputs.ner_model }}
           cache-from: type=gha,scope=ner-base-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=ner-base-${{ matrix.arch }}
 
@@ -88,6 +71,9 @@ jobs:
     needs: build-base
     runs-on: ubuntu-latest
     steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -95,24 +81,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Determine version tag
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=v1" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Create and push multi-arch manifest
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          docker manifest create "${{ env.BASE_IMAGE }}:${TAG}" \
-            "${{ env.BASE_IMAGE }}:${TAG}-amd64" \
-            "${{ env.BASE_IMAGE }}:${TAG}-arm64"
-          docker manifest annotate "${{ env.BASE_IMAGE }}:${TAG}" \
-            "${{ env.BASE_IMAGE }}:${TAG}-amd64" --os linux --arch amd64
-          docker manifest annotate "${{ env.BASE_IMAGE }}:${TAG}" \
-            "${{ env.BASE_IMAGE }}:${TAG}-arm64" --os linux --arch arm64
-          docker manifest push "${{ env.BASE_IMAGE }}:${TAG}"
-          echo "Pushed multi-arch manifest: ${{ env.BASE_IMAGE }}:${TAG}"
+          docker buildx imagetools create -t "${{ env.BASE_IMAGE }}:${{ inputs.version }}" \
+            "${{ env.BASE_IMAGE }}:${{ inputs.version }}-amd64" \
+            "${{ env.BASE_IMAGE }}:${{ inputs.version }}-arm64"
+          echo "Pushed multi-arch manifest: ${{ env.BASE_IMAGE }}:${{ inputs.version }}"
