@@ -1,0 +1,70 @@
+# NER base image: static artifacts (ONNX Runtime + NER model) that rarely change.
+#
+# This image is built asynchronously (not on every release) and consumed by
+# Dockerfile.ner via COPY --from. It contains:
+#   /app/lib/libonnxruntime.so   - ONNX Runtime shared library
+#   /app/model/model.onnx        - Exported NER model (dslim/bert-base-NER)
+#   /app/model/tokenizer.json    - HuggingFace tokenizer
+#   /app/model/config.json       - Label mappings for redact-ner
+#
+# Build:
+#   docker build -f Dockerfile.ner-base -t ghcr.io/censgate/redact-ner-base:v1 .
+#
+# Rebuild only when:
+#   - ONNX Runtime version changes (ONNX_VERSION arg)
+#   - NER model changes (NER_MODEL arg)
+#   - scripts/export_ner_model.py changes
+
+# -----------------------------------------------------------------------------
+# Stage 0: ONNX Runtime shared library
+# -----------------------------------------------------------------------------
+FROM debian:bookworm-slim AS onnx-runtime
+ARG TARGETARCH
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /fetch
+# ort 2.0.0-rc.11 requires ONNX Runtime >= 1.23.x; use CPU-only Linux build (no GPU)
+ARG ONNX_VERSION=1.23.2
+RUN case "$TARGETARCH" in \
+    amd64) \
+        wget -q "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-linux-x64-${ONNX_VERSION}.tgz" -O onnx.tgz \
+        && tar xzf onnx.tgz \
+        && cp "onnxruntime-linux-x64-${ONNX_VERSION}/lib/libonnxruntime.so.${ONNX_VERSION}" /libonnxruntime.so ;; \
+    arm64) \
+        wget -q "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_VERSION}/onnxruntime-linux-aarch64-${ONNX_VERSION}.tgz" -O onnx.tgz \
+        && tar xzf onnx.tgz \
+        && cp "onnxruntime-linux-aarch64-${ONNX_VERSION}/lib/libonnxruntime.so.${ONNX_VERSION}" /libonnxruntime.so ;; \
+    *) echo "Unsupported TARGETARCH: $TARGETARCH" && exit 1 ;; \
+    esac
+
+# -----------------------------------------------------------------------------
+# Stage 1: Export NER model to ONNX
+# -----------------------------------------------------------------------------
+FROM python:3.11-slim AS model-exporter
+ARG NER_MODEL=dslim/bert-base-NER
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /export
+
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir "transformers>=4.30" "torch>=2.0" "optimum[onnxruntime]"
+
+COPY scripts/export_ner_model.py ./
+
+RUN python export_ner_model.py --model "${NER_MODEL}" --output /out/models
+
+# -----------------------------------------------------------------------------
+# Stage 2: Final image with just the artifacts
+# -----------------------------------------------------------------------------
+FROM scratch
+
+# ONNX Runtime shared library
+COPY --from=onnx-runtime /libonnxruntime.so /app/lib/libonnxruntime.so
+
+# NER model, tokenizer, and config
+COPY --from=model-exporter /out/models/ /app/model/
