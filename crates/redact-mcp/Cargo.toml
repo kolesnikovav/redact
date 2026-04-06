@@ -1,0 +1,18 @@
+[package]
+name = "redact-mcp"
+version = "0.7.1"
+edition = "2021"
+
+[dependencies]
+redact-core = { path = "../redact-core" }
+tokio = { version = "1", features = ["full"] }
+tonic = "0.12"
+prost = "0.13"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+
+# -------------------------------------------------
+# build‑time dependencies (compile‑time crates)
+[build-dependencies]
+tonic-build = "0.12"
+prost-build = "0.13"

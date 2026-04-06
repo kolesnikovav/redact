@@ -65,6 +65,7 @@ enum Commands {
         #[arg(short, long)]
         entities: Vec<String>,
     },
+    Mcp { port: Option<u16> },
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -128,6 +129,15 @@ fn run() -> Result<()> {
                 cli.format,
             )?;
         }
+        Commands::Mcp { port } => {
+            let addr = format!("0.0.0.0:{}", port.unwrap_or(50051))
+                .parse()
+                .unwrap();
+            let engine = Arc::new(AnalyzerEngine::new());
+            tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(redact_mcp::run_mcp_server(addr, engine));
+        }        
     }
 
     Ok(())

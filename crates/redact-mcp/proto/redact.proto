@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package redact;
+
+service RedactService {
+  rpc AnalyzeText (AnalyzeRequest) returns (AnalysisResponse);
+  rpc HealthCheck (HealthRequest) returns (HealthResponse);
+  rpc GetStats (StatsRequest) returns (StatsResponse);
+}
+
+message AnalyzeRequest {
+  string text = 1;
+  string lang = 2;
+  float conf_threshold = 3;
+}
+
+message AnalysisResponse {
+  // Встроенный тип `AnalysisResult` сериализуется как JSON.
+  string result_json = 1;
+}
+
+message HealthRequest {}
+message HealthResponse {
+  string status = 1;
+}
+
+message StatsRequest {}
+message StatsResponse {
+  uint64 requests = 1;
+  double avg_time_ms = 2;
+}

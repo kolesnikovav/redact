@@ -12,6 +12,7 @@ description = "CLI tool for PII detection and anonymization"
 [dependencies]
 redact-core = { path = "../redact-core", version = "0.7.1" }
 redact-ner = { path = "../redact-ner", version = "0.7.1" }
+redact-mcp = { path = "../redact-mcp", version = "0.7.1" }
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
