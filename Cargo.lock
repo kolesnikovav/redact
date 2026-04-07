@@ -1985,11 +1985,13 @@ name = "redact-examples"
 version = "0.7.1"
 dependencies = [
  "anyhow",
+ "chrono",
  "redact-api",
  "redact-core",
  "reqwest",
  "serde_json",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
