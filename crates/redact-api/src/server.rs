@@ -92,6 +92,8 @@ impl ApiServer {
         info!("  GET  /health           - Health check");
         info!("  POST /api/v1/analyze   - Analyze text for PII");
         info!("  POST /api/v1/anonymize - Anonymize detected PII");
+        // ── MCP‑style endpoints
+        info!("  POST /mcp/v1/anonymize       - Anonymize detected PII");
 
         // Run server
         serve(listener, app).await?;

@@ -6,6 +6,9 @@
 use crate::models::{
     AnalyzeRequest, AnalyzeResponse, AnonymizeRequest, AnonymizeResponse, EntityResult,
     ErrorResponse, HealthResponse, TokenInfo,
+    // ---- MCP envelope types ---------------------------------------------
+    McpAnonymizeRequest,
+    McpAnonymizeResponse,    
 };
 use axum::{
     extract::State,
@@ -269,4 +272,30 @@ mod tests {
         assert!(response.text.contains("[EMAIL_ADDRESS]"));
         assert!(!response.results.is_empty());
     }
+}
+
+/// ---------------------------------------------------------------------------
+/// New handler for the MCP‑style anonymize endpoint
+/// ---------------------------------------------------------------------------
+
+/// Anonymize endpoint – MCP variant
+///
+/// Accepts a `McpAnonymizeRequest` (context + payload) and returns a
+/// `McpAnonymizeResponse`.  The underlying anonymization logic is the same
+/// as the regular `/anonymize` endpoint – we simply forward the payload to
+/// the existing `anonymize` handler and wrap the result in the MCP envelope.
+pub async fn anonymize_mcp(
+    State(state): State<AppState>,
+    Json(request): Json<McpAnonymizeRequest>,
+) -> Result<Json<McpAnonymizeResponse>, ApiError> {
+    // Re‑use the existing anonymize logic on the payload.
+    // `anonymize` consumes `State<AppState>` and `Json<AnonymizeRequest>`,
+    // so we clone the state and forward the payload.
+    let inner_response = anonymize(State(state.clone()), Json(request.payload)).await?;
+
+    // Build the MCP envelope – the context is simply echoed back.
+    Ok(Json(McpAnonymizeResponse {
+        context: request.context,
+        payload: inner_response.0,
+    }))
 }

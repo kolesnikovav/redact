@@ -252,3 +252,49 @@ impl From<redact_core::Token> for TokenInfo {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// MCP context envelope (MdodelContextProtocol)
+// ---------------------------------------------------------------------------
+
+/// Generic context information that accompanies every MCP request/response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpContext {
+    /// Unique identifier for the request (e.g., UUID).
+    pub request_id: String,
+
+    /// RFC‑3339 timestamp of when the request was received.
+    pub timestamp: String,
+
+    /// Optional correlation id for distributed tracing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub correlation_id: Option<String>,
+
+    /// Arbitrary key/value metadata that may be added by the caller.
+    #[serde(flatten)]
+    pub metadata: std::collections::HashMap<String, serde_json::Value>,
+}
+
+// ---------------------------------------------------------------------------
+// MCP request/response wrappers for /mcp/v1/anonymize
+// ---------------------------------------------------------------------------
+
+/// MCP request envelope for the anonymize endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpAnonymizeRequest {
+    /// Contextual metadata (request id, timestamp, etc.).
+    pub context: McpContext,
+
+    /// The actual anonymization payload.
+    pub payload: AnonymizeRequest,
+}
+
+/// MCP response envelope for the anonymize endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpAnonymizeResponse {
+    /// Contextual metadata (mirrors the request context).
+    pub context: McpContext,
+
+    /// The anonymization result payload.
+    pub payload: AnonymizeResponse,
+}

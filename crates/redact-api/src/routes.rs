@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for license details,
 // including the Additional Use Grant, Change Date, and Change License.
 
-use crate::handlers::{analyze, anonymize, health, AppState};
+use crate::handlers::{analyze, anonymize, anonymize_mcp, health, AppState};
 use axum::{
     routing::{get, post},
     Router,
@@ -15,6 +15,9 @@ pub fn create_router(state: AppState) -> Router {
         .route("/health", get(health))
         .route("/api/v1/analyze", post(analyze))
         .route("/api/v1/anonymize", post(anonymize))
+        // ── MCP specific route ───────────────────────
+        .route("/mcp/v1/anonymize", post(anonymize_mcp))
+        // ─────────────────────────────────────────────        
         .with_state(state)
 }
 
