@@ -4,6 +4,11 @@
 //! Then run this client with: cargo run --example api_client
 
 use serde_json::json;
+// ---------------------------------------------------------------------------
+// Add imports for UUID and timestamp generation
+// ---------------------------------------------------------------------------
+use uuid::Uuid;
+use chrono::Utc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -79,6 +84,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let masked: serde_json::Value = mask_response.json().await?;
     println!("{}\n", serde_json::to_string_pretty(&masked)?);
+
+    // 5. MCP Anonymize endpoint
+    println!("--- MCP Anonymize Text ---");
+    let mcp_request = json!({
+        "context": {
+            "request_id": Uuid::new_v4().to_string(),
+            "timestamp": Utc::now().to_rfc3339(),
+            "correlation_id": null
+        },
+        "payload": {
+            "text": "Email john@example.com, SSN 123-45-6789",
+            "language": "en",
+            "config": {
+                "strategy": "replace"
+            }
+        }
+    });
+
+    let mcp_response = client
+        .post(format!("{}/mcp/v1/anonymize", base_url))
+        .json(&mcp_request)
+        .send()
+        .await?;
+
+    println!("Status: {}", mcp_response.status());
+    let mcp_anonymized: serde_json::Value = mcp_response.json().await?;
+    println!("{}\n", serde_json::to_string_pretty(&mcp_anonymized)?);    
 
     Ok(())
 }
