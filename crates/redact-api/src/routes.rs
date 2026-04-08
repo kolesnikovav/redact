@@ -17,6 +17,8 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/v1/anonymize", post(anonymize))
         // ── MCP specific route ───────────────────────
         .route("/mcp/v1/anonymize", post(anonymize_mcp))
+        // ── SSE for MCP ──────────────────────────────
+        .route("/mcp/v1/anonymize/sse", get(anonymize_sse))        
         // ─────────────────────────────────────────────        
         .with_state(state)
 }

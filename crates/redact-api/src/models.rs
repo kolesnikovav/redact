@@ -298,3 +298,13 @@ pub struct McpAnonymizeResponse {
     /// The anonymization result payload.
     pub payload: AnonymizeResponse,
 }
+
+/// SSE‑anonimize params.
+#[derive(Deserialize, Serialize, Debug)]
+pub struct SseAnonymizeParams {
+    /// text with PII for replace.
+    pub text: String,
+    /// language.
+    #[serde(default)]
+    pub language: String,
+}

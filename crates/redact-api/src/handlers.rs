@@ -8,7 +8,8 @@ use crate::models::{
     ErrorResponse, HealthResponse, TokenInfo,
     // ---- MCP envelope types ---------------------------------------------
     McpAnonymizeRequest,
-    McpAnonymizeResponse,    
+    McpAnonymizeResponse,  
+    SseAnonymizeParams  
 };
 use axum::{
     extract::State,
@@ -298,4 +299,29 @@ pub async fn anonymize_mcp(
         context: request.context,
         payload: inner_response.0,
     }))
+}
+
+/// SSE‑endpoit for anonimize text.
+pub async fn anonymize_sse(
+    state: Extension<AppState>,
+    Query(params): Query<SseAnonymizeParams>,
+) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> {
+    let engine = state.engine.clone();
+    let text = params.text;
+
+    stream! {
+        match engine.analyze(text).await {
+            Ok(res) => {
+                // Send result as JSON.
+                let payload = serde_json::to_string(&res).unwrap_or_else(|_| "{}".to_string());
+                yield Ok(Event::default().data(payload));
+            }
+            Err(e) => {
+                yield Ok(Event::default()
+                    .name("error")
+                    .data(format!("{{\"error\":\"{}\"}}", e)));
+            }
+        }
+    }
+    .map_err(Infallible::from)
 }
