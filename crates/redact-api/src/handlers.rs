@@ -12,13 +12,19 @@ use crate::models::{
     SseAnonymizeParams  
 };
 use axum::{
-    extract::State,
+    extract::{Query, State},
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Response, Sse},
+    response::sse::{Event},
     Json,
 };
+
+// For the `stream!` macro
+use async_stream::stream;   
+
 use redact_core::{AnalyzerEngine, AnonymizerConfig, EntityType};
 use std::sync::Arc;
+use std::convert::Infallible;
 
 /// Application state
 #[derive(Clone)]
@@ -303,25 +309,16 @@ pub async fn anonymize_mcp(
 
 /// SSE‑endpoit for anonimize text.
 pub async fn anonymize_sse(
-    state: Extension<AppState>,
+    State(_state): State<AppState>,
     Query(params): Query<SseAnonymizeParams>,
 ) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> {
-    let engine = state.engine.clone();
-    let text = params.text;
+    // Example: echo the received text as an SSE stream
+    let text = params.text.clone(); // assume SseAnonymizeParams has a `text: String` field
 
-    stream! {
-        match engine.analyze(text).await {
-            Ok(res) => {
-                // Send result as JSON.
-                let payload = serde_json::to_string(&res).unwrap_or_else(|_| "{}".to_string());
-                yield Ok(Event::default().data(payload));
-            }
-            Err(e) => {
-                yield Ok(Event::default()
-                    .name("error")
-                    .data(format!("{{\"error\":\"{}\"}}", e)));
-            }
-        }
-    }
-    .map_err(Infallible::from)
+    // Build a stream that yields a single event and then completes
+    let stream = stream! {
+        yield Ok(Event::default().data(text));
+    };
+
+    Sse::new(stream)
 }

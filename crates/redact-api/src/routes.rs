@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for license details,
 // including the Additional Use Grant, Change Date, and Change License.
 
-use crate::handlers::{analyze, anonymize, anonymize_mcp, health, AppState};
+use crate::handlers::{analyze, anonymize, anonymize_mcp, anonymize_sse, health, AppState};
 use axum::{
     routing::{get, post},
     Router,
